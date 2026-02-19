@@ -74,7 +74,7 @@ class MatchRecord {
     String safeNotes = notes.replaceAll('\n', ' ').replaceAll('\t', ' ');
     return "$team\t$alliance\t$matchNum\t$startPos\t$preload\t"
       "$autoScoreCount\t${autoScoreTime.toStringAsFixed(1)}\t$autoPassCount\t${autoPassTime.toStringAsFixed(1)}\t"
-      "${autoPenalty?'Yes':'No'}\t${autoContrib?'Yes':'No"}\t$autoL\t$teleL\t"
+      "${autoPenalty?'Yes':'No'}\t${autoContrib?'Yes':'No'}\t$autoL\t$teleL\t"
       "${teleScores['outpost']}\t${teleScores['hub']}\t${teleScores['Nz']}\t${teleScores['Oz']}\t"
       "${teleTimes['Az']?.toStringAsFixed(1)}\t${teleTimes['Nz']?.toStringAsFixed(1)}\t${teleTimes['Oz']?.toStringAsFixed(1)}\t"
       "${def.toInt()}\t${shoot.toInt()}\t${feed.toInt()}\t$safeNotes"; 
