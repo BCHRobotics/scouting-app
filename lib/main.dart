@@ -137,7 +137,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   bool autoContrib = false;
   int autoL = 0;
 
-  // --- TELEOP STATE (Kept intact for now) ---
+  // --- TELEOP STATE ---
   String activeZone = "Az"; 
   bool teleTimerRunning = false;
   Timer? _teleTimer;
@@ -327,9 +327,12 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   }
 
   // --------------------------------------------------------------------------
-  // AUTO VIEW (BRAND NEW!)
+  // AUTO VIEW (PROPORTIONAL SIZING)
   // --------------------------------------------------------------------------
   Widget _buildAutoView() {
+    // We grab the total screen height so we can make buttons scale perfectly!
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -344,21 +347,31 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ])),
         const SizedBox(height: 12),
 
-        // 2. PRELOAD SCORING
-        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Row(children: [
-          const Expanded(child: Text("Preload Score", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
-          Text("$preload", style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)), const SizedBox(width: 20),
-          _btn("-1", const Color(0xFF991B1B), () => setState(() { if(preload>0) preload--; _saveDraft(); })), const SizedBox(width: 10),
-          _btn("+1", const Color(0xFF15803D), () => setState(() { preload++; _saveDraft(); })),
-        ])),
+        // 2. PRELOAD SCORING (Takes up 12% of screen height)
+        Container(
+          height: screenHeight * 0.12, 
+          padding: const EdgeInsets.all(12), 
+          decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), 
+          child: Row(children: [
+            const Expanded(flex: 2, child: Text("Preload\nScore", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
+            Expanded(flex: 1, child: Text("$preload", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold))), 
+            const SizedBox(width: 15),
+            Expanded(flex: 2, child: _preloadBtn("-1", const Color(0xFF991B1B), () => setState(() { if(preload>0) preload--; _saveDraft(); }))), 
+            const SizedBox(width: 10),
+            Expanded(flex: 2, child: _preloadBtn("+1", const Color(0xFF15803D), () => setState(() { preload++; _saveDraft(); }))),
+          ])
+        ),
         const SizedBox(height: 12),
 
-        // 3. HOLD TO SCORE & PASS TIMERS
-        Row(children: [
-          Expanded(child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), _startScoreTimer, _endScoreTimer)),
-          const SizedBox(width: 12),
-          Expanded(child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), _startPassTimer, _endPassTimer)),
-        ]),
+        // 3. HOLD TO SCORE & PASS TIMERS (Takes up 30% of screen height)
+        SizedBox(
+          height: screenHeight * 0.30, // 30% makes these buttons MASSIVE and easy to hold
+          child: Row(children: [
+            Expanded(child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), _startScoreTimer, _endScoreTimer)),
+            const SizedBox(width: 12),
+            Expanded(child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), _startPassTimer, _endPassTimer)),
+          ]),
+        ),
         const SizedBox(height: 12),
 
         // 4. CHECKBOXES & NOTES
@@ -372,25 +385,33 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     );
   }
 
+  // Dedicated button for Preload so it expands to fit the row height automatically
+  Widget _preloadBtn(String l, Color c, VoidCallback cb) => ElevatedButton(
+    style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(0)), 
+    onPressed: cb, 
+    child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 32, color: Colors.white)))
+  );
+
   Widget _holdTimerBtn(String title, double currentHold, int count, Color c, Function(TapDownDetails) onDown, Function(dynamic) onUp) {
     bool isHolding = currentHold > 0;
     return GestureDetector(
       onTapDown: onDown, onTapUp: onUp, onTapCancel: () => onUp(null),
       child: Container(
-        height: 180, decoration: BoxDecoration(color: isHolding ? c.withOpacity(0.8) : AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: c, width: 3)),
+        // Removed fixed height; it now stretches to fill the SizedBox (30% of screen)
+        decoration: BoxDecoration(color: isHolding ? c.withOpacity(0.8) : AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: c, width: 3)),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text("HOLD TO $title", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          Text("HOLD TO\n$title", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
           const SizedBox(height: 10),
-          Text("${currentHold.toStringAsFixed(1)}s", style: TextStyle(color: isHolding ? Colors.white : Colors.white54, fontSize: 45, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 5),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(12)), child: Text("Count: $count", style: const TextStyle(color: Colors.white, fontSize: 16)))
+          FittedBox(fit: BoxFit.scaleDown, child: Text("${currentHold.toStringAsFixed(1)}s", style: TextStyle(color: isHolding ? Colors.white : Colors.white54, fontSize: 45, fontWeight: FontWeight.bold))),
+          const SizedBox(height: 10),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(12)), child: Text("Count: $count", style: const TextStyle(color: Colors.white, fontSize: 18)))
         ]),
       ),
     );
   }
 
   // --------------------------------------------------------------------------
-  // TELEOP VIEW (Mostly unchanged to keep it functional)
+  // TELEOP VIEW
   // --------------------------------------------------------------------------
   Widget _buildTeleView() {
     return Column(children: [
