@@ -578,7 +578,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       title: Text(header, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)), 
       content: Container(
         // FIX 1: Make the box physically larger (320x320 instead of 250x250)
-        width: 320, height: 320, 
+        width: 350, height: 350, 
         padding: const EdgeInsets.all(16), 
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
         child: CustomPaint(painter: QrCodePainter(data: rec.toQRString()))
@@ -600,9 +600,8 @@ class QrCodePainter extends CustomPainter {
   @override void paint(Canvas c, Size s) { 
     c.drawRect(Rect.fromLTWH(0, 0, s.width, s.height), Paint()..color = Colors.white);
 
-    // FIX 2: Change Version 40 to Version 15. 
-    // This makes the individual black squares MUCH bigger and scannable!
-    final qr = QrCode(15, QrErrorCorrectLevel.L)..addData(data); 
+    
+    final qr = QrCode(20, QrErrorCorrectLevel.L)..addData(data); 
     final img = QrImage(qr); 
     final p = Paint()..style = PaintingStyle.fill..color = Colors.black; 
     final ps = s.width / img.moduleCount; 
