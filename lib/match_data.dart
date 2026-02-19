@@ -15,8 +15,8 @@ class MatchRecord {
   String timestamp;
   String notes;
   
-  // NEW: Auto Data
-  String startPos; // "Left", "Center", "Right"
+  // Auto Data
+  String startPos; // "Left", "Center", "Right" (No default)
   int preload;
   int autoScoreCount;
   double autoScoreTime;
@@ -26,7 +26,7 @@ class MatchRecord {
   bool autoContrib;
   int autoL; // Auto Leave Level
   
-  // OLD: Teleop Data (Kept as is until we tackle Teleop next)
+  // Teleop Data
   Map<String, int> teleScores;
   Map<String, double> teleTimes;
   int teleL; // Teleop Climb Level
@@ -61,7 +61,7 @@ class MatchRecord {
   factory MatchRecord.fromJson(Map<String, dynamic> json) {
     return MatchRecord(
       matchNum: json['matchNum'] ?? "", team: json['team'] ?? "", alliance: json['alliance'] ?? "", timestamp: json['timestamp'] ?? "", notes: json['notes'] ?? "",
-      startPos: json['startPos'] ?? "Center", preload: json['preload'] ?? 0,
+      startPos: json['startPos'] ?? "", preload: json['preload'] ?? 0,
       autoScoreCount: json['autoScoreCount'] ?? 0, autoScoreTime: (json['autoScoreTime'] ?? 0).toDouble(),
       autoPassCount: json['autoPassCount'] ?? 0, autoPassTime: (json['autoPassTime'] ?? 0).toDouble(),
       autoPenalty: json['autoPenalty'] ?? false, autoContrib: json['autoContrib'] ?? false, autoL: json['autoL'] ?? 0,
@@ -82,7 +82,7 @@ class MatchRecord {
 }
 
 // ----------------------------------------------------------------------------
-// 2. PIT RECORD (Unchanged)
+// 2. PIT RECORD
 // ----------------------------------------------------------------------------
 class PitRecord {
   String team, width, length, height, weight; 
