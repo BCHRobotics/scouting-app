@@ -120,7 +120,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   final noteCtrl = TextEditingController();
 
   // --- AUTO STATE ---
-  String startPos = "Center";
+  String? startPos; // NOW NULL BY DEFAULT (Forces user to select)
   int preload = 0;
   
   int autoScoreCount = 0;
@@ -180,7 +180,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           noteCtrl.text = r.notes;
           if (r.alliance.isNotEmpty) alliance = r.alliance;
           
-          startPos = r.startPos;
+          startPos = r.startPos.isEmpty ? null : r.startPos;
           preload = r.preload;
           autoScoreCount = r.autoScoreCount;
           autoScoreTime = r.autoScoreTime;
@@ -204,7 +204,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   void _saveDraft() async {
     MatchRecord r = MatchRecord(
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance ?? "", timestamp: "", notes: noteCtrl.text,
-      startPos: startPos, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime,
+      startPos: startPos ?? "", preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime,
       autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL,
       teleScores: teleScores, teleTimes: teleTimes, teleL: teleL,
       def: def, shoot: shoot, feed: feed,
@@ -267,10 +267,11 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   void saveMatch() async {
     if (alliance == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Please Select Alliance!"), backgroundColor: Colors.red)); return; }
     if (matchCtrl.text.isEmpty || teamCtrl.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Enter Match & Team #!"), backgroundColor: Colors.red)); return; }
+    if (startPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select a Start Position!"), backgroundColor: Colors.red)); return; }
     
     MatchRecord r = MatchRecord(
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance!, timestamp: DateTime.now().toString(), notes: noteCtrl.text,
-      startPos: startPos, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime, autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL,
+      startPos: startPos!, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime, autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL,
       teleScores: teleScores, teleTimes: teleTimes, teleL: teleL, def: def, shoot: shoot, feed: feed,
     );
     
@@ -327,19 +328,18 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   }
 
   // --------------------------------------------------------------------------
-  // AUTO VIEW (PROPORTIONAL SIZING)
+  // AUTO VIEW (VERTICAL LAYOUT)
   // --------------------------------------------------------------------------
   Widget _buildAutoView() {
-    // We grab the total screen height so we can make buttons scale perfectly!
     final screenHeight = MediaQuery.of(context).size.height;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         
-        // 1. START POSITION
-        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
-          const Text("Start Position", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
+        // 1. START POSITION (NO DEFAULT)
+        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: startPos == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
+          Text(startPos == null ? "Select Start Position!" : "Start Position", style: TextStyle(color: startPos == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
           Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
             onTap: ()=>setState((){ startPos = p; _saveDraft(); }),
             child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: startPos==p ? Colors.amber[700] : Colors.grey[800], borderRadius: BorderRadius.circular(8)), child: Center(child: Text(p, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))))
@@ -347,14 +347,14 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ])),
         const SizedBox(height: 12),
 
-        // 2. PRELOAD SCORING (Takes up 12% of screen height)
+        // 2. PRELOAD SCORING (15% of screen height)
         Container(
-          height: screenHeight * 0.12, 
+          height: screenHeight * 0.15, 
           padding: const EdgeInsets.all(12), 
           decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), 
           child: Row(children: [
-            const Expanded(flex: 2, child: Text("Preload\nScore", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
-            Expanded(flex: 1, child: Text("$preload", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold))), 
+            const Expanded(flex: 2, child: Text("Preload\nScore", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold))),
+            Expanded(flex: 1, child: Text("$preload", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.bold))), 
             const SizedBox(width: 15),
             Expanded(flex: 2, child: _preloadBtn("-1", const Color(0xFF991B1B), () => setState(() { if(preload>0) preload--; _saveDraft(); }))), 
             const SizedBox(width: 10),
@@ -363,33 +363,54 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ),
         const SizedBox(height: 12),
 
-        // 3. HOLD TO SCORE & PASS TIMERS (Takes up 30% of screen height)
+        // 3. HOLD TO SCORE (25% of screen height)
         SizedBox(
-          height: screenHeight * 0.30, // 30% makes these buttons MASSIVE and easy to hold
-          child: Row(children: [
-            Expanded(child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), _startScoreTimer, _endScoreTimer)),
-            const SizedBox(width: 12),
-            Expanded(child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), _startPassTimer, _endPassTimer)),
-          ]),
+          height: screenHeight * 0.25, 
+          child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), _startScoreTimer, _endScoreTimer)
         ),
         const SizedBox(height: 12),
 
-        // 4. CHECKBOXES & NOTES
-        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
-          CheckboxListTile(title: const Text("Penalty", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), activeColor: Colors.redAccent, checkColor: Colors.white, value: autoPenalty, onChanged: (v)=>setState((){autoPenalty=v!; _saveDraft();})),
-          CheckboxListTile(title: const Text("Contributed", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), activeColor: Colors.greenAccent, checkColor: Colors.black, value: autoContrib, onChanged: (v)=>setState((){autoContrib=v!; _saveDraft();})),
-          const SizedBox(height: 10),
+        // 4. HOLD TO PASS (25% of screen height)
+        SizedBox(
+          height: screenHeight * 0.25, 
+          child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), _startPassTimer, _endPassTimer)
+        ),
+        const SizedBox(height: 12),
+
+        // 5. BIG CHECKBOXES & NOTES
+        Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
+          
+          // Scaled up massive Checkboxes
+          GestureDetector(
+            onTap: () => setState((){autoPenalty = !autoPenalty; _saveDraft();}),
+            child: Row(children: [
+              Transform.scale(scale: 1.8, child: Checkbox(activeColor: Colors.redAccent, checkColor: Colors.white, value: autoPenalty, onChanged: (v)=>setState((){autoPenalty=v!; _saveDraft();}))),
+              const SizedBox(width: 15),
+              const Text("Penalty", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+            ]),
+          ),
+          const SizedBox(height: 15),
+          
+          GestureDetector(
+            onTap: () => setState((){autoContrib = !autoContrib; _saveDraft();}),
+            child: Row(children: [
+              Transform.scale(scale: 1.8, child: Checkbox(activeColor: Colors.greenAccent, checkColor: Colors.black, value: autoContrib, onChanged: (v)=>setState((){autoContrib=v!; _saveDraft();}))),
+              const SizedBox(width: 15),
+              const Text("Contributed", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+            ]),
+          ),
+          
+          const SizedBox(height: 20),
           _input(noteCtrl, "Auto Notes...", lines: 3)
         ])),
       ]),
     );
   }
 
-  // Dedicated button for Preload so it expands to fit the row height automatically
   Widget _preloadBtn(String l, Color c, VoidCallback cb) => ElevatedButton(
     style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(0)), 
     onPressed: cb, 
-    child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 32, color: Colors.white)))
+    child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold)))
   );
 
   Widget _holdTimerBtn(String title, double currentHold, int count, Color c, Function(TapDownDetails) onDown, Function(dynamic) onUp) {
@@ -397,14 +418,13 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     return GestureDetector(
       onTapDown: onDown, onTapUp: onUp, onTapCancel: () => onUp(null),
       child: Container(
-        // Removed fixed height; it now stretches to fill the SizedBox (30% of screen)
-        decoration: BoxDecoration(color: isHolding ? c.withOpacity(0.8) : AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: c, width: 3)),
+        decoration: BoxDecoration(color: isHolding ? c.withOpacity(0.8) : AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: c, width: 4)),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text("HOLD TO\n$title", textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          Text("HOLD TO $title", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2.0)),
           const SizedBox(height: 10),
-          FittedBox(fit: BoxFit.scaleDown, child: Text("${currentHold.toStringAsFixed(1)}s", style: TextStyle(color: isHolding ? Colors.white : Colors.white54, fontSize: 45, fontWeight: FontWeight.bold))),
+          FittedBox(fit: BoxFit.scaleDown, child: Text("${currentHold.toStringAsFixed(1)}s", style: TextStyle(color: isHolding ? Colors.white : Colors.white54, fontSize: 65, fontWeight: FontWeight.bold))),
           const SizedBox(height: 10),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(12)), child: Text("Count: $count", style: const TextStyle(color: Colors.white, fontSize: 18)))
+          Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(12)), child: Text("Count: $count", style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)))
         ]),
       ),
     );
