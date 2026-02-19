@@ -120,7 +120,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   final noteCtrl = TextEditingController();
 
   // --- AUTO STATE ---
-  String? startPos; // NOW NULL BY DEFAULT (Forces user to select)
+  String? startPos; // NULL BY DEFAULT
   int preload = 0;
   
   int autoScoreCount = 0;
@@ -328,7 +328,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   }
 
   // --------------------------------------------------------------------------
-  // AUTO VIEW (VERTICAL LAYOUT)
+  // AUTO VIEW
   // --------------------------------------------------------------------------
   Widget _buildAutoView() {
     final screenHeight = MediaQuery.of(context).size.height;
@@ -337,7 +337,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         
-        // 1. START POSITION (NO DEFAULT)
+        // 1. START POSITION
         Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: startPos == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
           Text(startPos == null ? "Select Start Position!" : "Start Position", style: TextStyle(color: startPos == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
           Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
@@ -347,7 +347,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ])),
         const SizedBox(height: 12),
 
-        // 2. PRELOAD SCORING (15% of screen height)
+        // 2. PRELOAD SCORING
         Container(
           height: screenHeight * 0.15, 
           padding: const EdgeInsets.all(12), 
@@ -363,14 +363,14 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ),
         const SizedBox(height: 12),
 
-        // 3. HOLD TO SCORE (25% of screen height)
+        // 3. HOLD TO SCORE
         SizedBox(
           height: screenHeight * 0.25, 
           child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), _startScoreTimer, _endScoreTimer)
         ),
         const SizedBox(height: 12),
 
-        // 4. HOLD TO PASS (25% of screen height)
+        // 4. HOLD TO PASS
         SizedBox(
           height: screenHeight * 0.25, 
           child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), _startPassTimer, _endPassTimer)
@@ -379,8 +379,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
         // 5. BIG CHECKBOXES & NOTES
         Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
-          
-          // Scaled up massive Checkboxes
           GestureDetector(
             onTap: () => setState((){autoPenalty = !autoPenalty; _saveDraft();}),
             child: Row(children: [
@@ -522,7 +520,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 }
 
 // ============================================================================
-// SECTION 3: PIT SCOUTING SCREEN (Unchanged)
+// SECTION 3: PIT SCOUTING SCREEN
 // ============================================================================
 class PitScoutingScreen extends StatefulWidget { const PitScoutingScreen({super.key}); @override State<PitScoutingScreen> createState() => _PitScoutingScreenState(); }
 class _PitScoutingScreenState extends State<PitScoutingScreen> {
@@ -563,9 +561,8 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
   Widget _customToggle(String l, bool a, Color c, VoidCallback t) => GestureDetector(onTap: t, child: Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: a?c:Colors.grey[800], borderRadius: BorderRadius.circular(4))), const SizedBox(width: 10), Text(l, style: const TextStyle(color: Colors.white, fontSize: 18))]));
   Widget _roleBtn(String l, Color c) => Expanded(child: GestureDetector(onTap: ()=>setState(()=>role=l), child: Container(height: 45, decoration: BoxDecoration(color: role==l?c:c.withOpacity(0.3), borderRadius: BorderRadius.circular(4), border: role==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))));
 }
-
 // ============================================================================
-// SECTION 4 & 5: HISTORY AND QR PAINTER (Unchanged)
+// SECTION 4: HISTORY SCREEN
 // ============================================================================
 class HistoryScreen extends StatefulWidget { final bool isPit; const HistoryScreen({required this.isPit, super.key}); @override State<HistoryScreen> createState() => _HistoryScreenState(); }
 class _HistoryScreenState extends State<HistoryScreen> {
@@ -573,7 +570,49 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override void initState() { super.initState(); loadData(); }
   void loadData() async { final prefs = await SharedPreferences.getInstance(); List<String> raw = prefs.getStringList(widget.isPit ? 'frc_pit' : 'frc_matches') ?? []; setState(() { history = raw.map((e) => widget.isPit ? PitRecord.fromJson(jsonDecode(e)) : MatchRecord.fromJson(jsonDecode(e))).toList(); if (!widget.isPit) history = history.reversed.toList(); else history.sort((a, b) => int.parse(a.team).compareTo(int.parse(b.team))); }); }
   void deleteItem(int i) async { setState(() => history.removeAt(i)); final prefs = await SharedPreferences.getInstance(); List<dynamic> toSave = widget.isPit ? history : history.reversed.toList(); await prefs.setStringList(widget.isPit ? 'frc_pit' : 'frc_matches', toSave.map((e) => jsonEncode(e.toJson())).toList()); }
+  
+  void showQR(dynamic rec) { 
+    String header = rec is MatchRecord ? "Match ${rec.matchNum} - Team ${rec.team}" : "Team ${rec.team}"; 
+    showDialog(context: context, builder: (_) => AlertDialog(
+      backgroundColor: AppColors.card,
+      title: Text(header, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)), 
+      content: Container(
+        // FIX 1: Make the box physically larger (320x320 instead of 250x250)
+        width: 320, height: 320, 
+        padding: const EdgeInsets.all(16), 
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+        child: CustomPaint(painter: QrCodePainter(data: rec.toQRString()))
+      ), 
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("CLOSE", style: TextStyle(color: Colors.white)))]
+    )); 
+  }
+
   @override Widget build(BuildContext context) { return Scaffold(backgroundColor: AppColors.bg, appBar: AppBar(title: Text(widget.isPit ? "Pit History" : "Match History"), backgroundColor: widget.isPit ? Colors.blue : Colors.amber[800]), body: history.isEmpty ? const Center(child: Text("No Records Found", style: TextStyle(color: Colors.white, fontSize: 20))) : ListView.builder(itemCount: history.length, itemBuilder: (ctx, i) { final rec = history[i]; String title = widget.isPit ? "Team ${rec.team}" : "Match ${rec.matchNum} | Team ${rec.team}"; String sub = widget.isPit ? "Role: ${rec.role}" : "${rec.alliance} | ${rec.timestamp.split(' ')[0]}"; return Card(color: AppColors.card, margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), child: ListTile(title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), subtitle: Text(sub, style: const TextStyle(color: Colors.grey)), trailing: Row(mainAxisSize: MainAxisSize.min, children: [ IconButton(icon: const Icon(Icons.qr_code, color: Colors.white), onPressed: () => showQR(rec)), IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () async { bool confirm = await _confirmExit(context, "Delete Record?", "This cannot be undone.", yesLabel: "DELETE"); if (confirm) deleteItem(i); }) ]))); })); }
-  void showQR(dynamic rec) { String header = rec is MatchRecord ? "Match ${rec.matchNum} - Team ${rec.team}" : "Team ${rec.team}"; showDialog(context: context, builder: (_) => AlertDialog(title: Text(header, style: const TextStyle(fontWeight: FontWeight.bold)), content: SizedBox(width: 250, height: 250, child: CustomPaint(painter: QrCodePainter(data: rec.toQRString()))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("CLOSE"))])); }
 }
-class QrCodePainter extends CustomPainter { final String data; QrCodePainter({required this.data}); @override void paint(Canvas c, Size s) { final qr = QrCode(40, QrErrorCorrectLevel.L)..addData(data); final img = QrImage(qr); final p = Paint()..style = PaintingStyle.fill..color = Colors.black; final ps = s.width / img.moduleCount; for (int x = 0; x < img.moduleCount; x++) { for (int y = 0; y < img.moduleCount; y++) { if (img.isDark(y, x)) c.drawRect(Rect.fromLTWH(x * ps, y * ps, ps, ps), p); } } } @override bool shouldRepaint(covariant CustomPainter old) => false; }
+
+// ============================================================================
+// SECTION 5: QR PAINTER
+// ============================================================================
+class QrCodePainter extends CustomPainter { 
+  final String data; 
+  QrCodePainter({required this.data}); 
+  
+  @override void paint(Canvas c, Size s) { 
+    c.drawRect(Rect.fromLTWH(0, 0, s.width, s.height), Paint()..color = Colors.white);
+
+    // FIX 2: Change Version 40 to Version 15. 
+    // This makes the individual black squares MUCH bigger and scannable!
+    final qr = QrCode(15, QrErrorCorrectLevel.L)..addData(data); 
+    final img = QrImage(qr); 
+    final p = Paint()..style = PaintingStyle.fill..color = Colors.black; 
+    final ps = s.width / img.moduleCount; 
+    
+    for (int x = 0; x < img.moduleCount; x++) { 
+      for (int y = 0; y < img.moduleCount; y++) { 
+        if (img.isDark(y, x)) c.drawRect(Rect.fromLTWH(x * ps, y * ps, ps, ps), p); 
+      } 
+    } 
+  } 
+  
+  @override bool shouldRepaint(covariant CustomPainter old) => false; 
+}
