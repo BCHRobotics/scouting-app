@@ -5,31 +5,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qr/qr.dart';
-import 'match_data.dart'; // Ensure this file exists in your project
+import 'match_data.dart'; 
 
 // ============================================================================
 // SECTION 0: CONSTANTS & HELPERS
-// These are tools used globally across the app.
 // ============================================================================
 
-// AppColors: Central place to change theme colors.
 class AppColors {
-  static const bg = Color(0xFF0F172A);       // Dark Blue-Grey Background
-  static const card = Color(0xFF334155);     // Card Background
-  static const pitCard = Color(0xFF1E1B4B);  // Pit Card Background (Purple)
+  static const bg = Color(0xFF0F172A);       
+  static const card = Color(0xFF334155);     
+  static const pitCard = Color(0xFF1E1B4B);  
 }
 
-// _confirmExit: Shows a "Are you sure?" popup.
-// UPDATED: Now accepts a custom 'yesLabel' so we can use it for "DELETE" too.
 Future<bool> _confirmExit(BuildContext context, String title, String msg, {String yesLabel = "EXIT"}) async {
   return (await showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(title), content: Text(msg),
       actions: [
-        // Cancel button (Returns false)
         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
-        // Action button (Returns true). Uses the custom label (EXIT or DELETE).
         TextButton(
           onPressed: () => Navigator.pop(ctx, true), 
           child: Text(yesLabel, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
@@ -39,12 +33,19 @@ Future<bool> _confirmExit(BuildContext context, String title, String msg, {Strin
   )) ?? false;
 }
 
-// Entry Point: Launches the App
-void main() => runApp(const MaterialApp(debugShowCheckedModeBanner: false, home: HomeScreen()));
+void main() => runApp(MaterialApp(
+  debugShowCheckedModeBanner: false, 
+  theme: ThemeData(
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: AppColors.bg, 
+    canvasColor: AppColors.bg,             
+    appBarTheme: const AppBarTheme(backgroundColor: AppColors.card, elevation: 0),
+  ),
+  home: const HomeScreen()
+));
 
 // ============================================================================
 // SECTION 1: HOME SCREEN
-// The main dashboard with navigation buttons.
 // ============================================================================
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -55,17 +56,14 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(children: [
-          // Row 1: Match Scouting & History Buttons
           Expanded(child: Row(children: [
             _menuBtn(context, "MATCH SCOUTING", Colors.deepPurple, const MatchScoutingScreen()),
             _menuBtn(context, "MATCH HISTORY", Colors.amber[800]!, const HistoryScreen(isPit: false)),
           ])),
-          // Row 2: Pit Scouting & History Buttons
           Expanded(child: Row(children: [
             _menuBtn(context, "PIT SCOUTING", Colors.red[800]!, const PitScoutingScreen()),
             _menuBtn(context, "PIT HISTORY", Colors.blue[800]!, const HistoryScreen(isPit: true)),
           ])),
-          // Bottom: Exit App Button
           Padding(
             padding: const EdgeInsets.all(12),
             child: SizedBox(
@@ -73,7 +71,6 @@ class HomeScreen extends StatelessWidget {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800], padding: const EdgeInsets.all(20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 onPressed: () async {
-                  // Uses the default "EXIT" label
                   if (await _confirmExit(context, "Exit App?", "Are you sure you want to close the app?")) {
                     Platform.isAndroid ? SystemNavigator.pop() : exit(0);
                   }
@@ -87,7 +84,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // Helper widget to make consistent menu buttons
   Widget _menuBtn(BuildContext ctx, String txt, Color c, Widget page) {
     return Expanded(
       child: Padding(
@@ -108,7 +104,6 @@ class HomeScreen extends StatelessWidget {
 
 // ============================================================================
 // SECTION 2: MATCH SCOUTING SCREEN
-// This is the main data collection screen.
 // ============================================================================
 class MatchScoutingScreen extends StatefulWidget {
   const MatchScoutingScreen({super.key});
@@ -117,17 +112,14 @@ class MatchScoutingScreen extends StatefulWidget {
 }
 
 class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
-  // --- Navigation & State ---
-  int pageIdx = 0; // 0=Auto, 1=Tele, 2=Ratings, 3=Finalize
+  int pageIdx = 0; 
   final List<String> pages = ["Auto", "Tele", "Ratings", "Finalize"];
   String activeZone = "Az"; 
   String? alliance; 
   
-  // --- Timer Variables ---
   bool timerRunning = false;
   Timer? _timer;
 
-  // --- Scoring Data ---
   Map<String, int> autoScores = {"outpost": 0, "hub": 0, "Nz": 0, "Oz": 0};
   Map<String, int> teleScores = {"outpost": 0, "hub": 0, "Nz": 0, "Oz": 0};
   Map<String, double> autoTimes = {"Az": 0.0, "Nz": 0.0, "Oz": 0.0};
@@ -135,27 +127,17 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   int autoL = 0, teleL = 0;
   double def = 0, shoot = 0, feed = 0;
   
-  // --- Text Input Controllers ---
   final matchCtrl = TextEditingController();
   final teamCtrl = TextEditingController();
   final noteCtrl = TextEditingController();
 
-  // Helper Getters to switch between Auto/Tele data automatically
   Map<String, int> get currentScores => pageIdx == 0 ? autoScores : teleScores;
   Map<String, double> get currentTimes => pageIdx == 0 ? autoTimes : teleTimes;
 
-  // --------------------------------------------------------------------------
-  // DRAFT SAVING LOGIC (Persistence)
-  // This ensures data is saved even if the app crashes or closes.
-  // --------------------------------------------------------------------------
-  
   @override 
   void initState() { 
     super.initState();
-    // 1. Load draft on startup
     _loadDraft();
-    
-    // 2. Auto-save when typing in text fields
     matchCtrl.addListener(_saveDraft);
     teamCtrl.addListener(_saveDraft);
     noteCtrl.addListener(_saveDraft);
@@ -170,11 +152,9 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     super.dispose(); 
   }
 
-  // Reads the draft from phone storage and fills the UI
   Future<void> _loadDraft() async {
     final prefs = await SharedPreferences.getInstance();
     String? jsonStr = prefs.getString('match_draft');
-    
     if (jsonStr != null) {
       try {
         MatchRecord r = MatchRecord.fromJson(jsonDecode(jsonStr));
@@ -195,16 +175,11 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           shoot = r.shoot;
           feed = r.feed;
         });
-        // Show a quick popup so the user knows data was restored
         if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Draft Restored!"), duration: Duration(milliseconds: 1000)));
-      } catch (e) {
-        print("Error loading draft: $e");
-      }
+      } catch (e) { print("Error loading draft: $e"); }
     }
   }
 
-  // Saves the current state to a temp file
-  // Called whenever scores change or user types
   void _saveDraft() async {
     MatchRecord r = MatchRecord(
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance ?? "", timestamp: "",
@@ -216,17 +191,12 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     await prefs.setString('match_draft', jsonEncode(r.toJson()));
   }
 
-  // --------------------------------------------------------------------------
-  // LOGIC FUNCTIONS
-  // --------------------------------------------------------------------------
-
-  // Toggles the Stopwatch
   void toggleTimer() {
     setState(() => timerRunning = !timerRunning);
     if (timerRunning) {
       _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
         setState(() => currentTimes[activeZone] = (currentTimes[activeZone] ?? 0) + 0.1);
-        _saveDraft(); // Save draft periodically while timer runs
+        _saveDraft(); 
       });
     } else { 
       _timer?.cancel();
@@ -234,7 +204,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     }
   }
 
-  // Updates Scores and Saves Draft
   void updateScore(String key, int delta) {
     setState(() {
       if ((currentScores[key] ?? 0) + delta >= 0) {
@@ -244,7 +213,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     _saveDraft();
   }
 
-  // Final Save: Writes to official history and deletes draft
   void saveMatch() async {
     if (alliance == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Please Select Alliance!"), backgroundColor: Colors.red));
@@ -254,8 +222,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Enter Match & Team #!"), backgroundColor: Colors.red));
       return;
     }
-    
-    // Create Final Record
     MatchRecord r = MatchRecord(
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance!, timestamp: DateTime.now().toString(),
       notes: noteCtrl.text, autoScores: Map.from(autoScores), teleScores: Map.from(teleScores),
@@ -264,20 +230,13 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     );
     
     final prefs = await SharedPreferences.getInstance();
-    // 1. Save to History List
     List<String> s = prefs.getStringList('frc_matches') ?? [];
     s.add(jsonEncode(r.toJson()));
     await prefs.setStringList('frc_matches', s);
-    
-    // 2. DELETE THE DRAFT (Clean up)
     await prefs.remove('match_draft');
     
     if(mounted) Navigator.pop(context);
   }
-
-  // --------------------------------------------------------------------------
-  // UI BUILDERS
-  // --------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -286,7 +245,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) async { 
-        if (!didPop && await _confirmExit(context, "Exit Scouting?", "Draft will be saved, but verify before exiting.") && mounted) Navigator.pop(context); 
+        if (!didPop && await _confirmExit(context, "Exit Scouting?", "Draft will be saved.") && mounted) Navigator.pop(context); 
       },
       child: Scaffold(
         backgroundColor: AppColors.bg,
@@ -296,25 +255,21 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
             if(await _confirmExit(context, "Exit Scouting?", "Draft will be saved.") && mounted) Navigator.pop(context); 
           }),
           title: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            // Page Controls
             IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => setState((){ _timer?.cancel(); timerRunning=false; pageIdx = (pageIdx - 1 + pages.length) % pages.length; if(pageIdx<2) activeZone="Az"; })),
-            
-            // Level Button (Changes based on Auto/Tele)
             if(pageIdx < 2) GestureDetector(
-              onTap: () { 
-                if(timerRunning) setState(() { pageIdx==0 ? autoL=(autoL+1)%4 : teleL=(teleL+1)%4; _saveDraft(); }); 
-              },
+              onTap: () { if(timerRunning) setState(() { pageIdx==0 ? autoL=(autoL+1)%4 : teleL=(teleL+1)%4; _saveDraft(); }); },
               child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: timerRunning ? Colors.blue : Colors.grey[700], borderRadius: BorderRadius.circular(12)), child: Text("Lvl ${pageIdx==0?autoL:teleL}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))
             ),
-            
             IconButton(icon: const Icon(Icons.arrow_forward_ios, color: Colors.white), onPressed: () => setState((){ _timer?.cancel(); timerRunning=false; pageIdx = (pageIdx + 1) % pages.length; if(pageIdx<2) activeZone="Az"; })),
           ]),
         ),
-        body: Column(children: [
-          Container(width: double.infinity, padding: const EdgeInsets.all(10), color: headColor, child: Text(pages[pageIdx].toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white))),
-          Expanded(child: _buildBody()),
-          if(pageIdx != 3) _buildBottomBar()
-        ]),
+        body: SafeArea(
+          child: Column(children: [
+            Container(width: double.infinity, padding: const EdgeInsets.all(10), color: headColor, child: Text(pages[pageIdx].toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white))),
+            Expanded(child: _buildBody()),
+            if(pageIdx != 3) _buildBottomBar()
+          ]),
+        ),
       ),
     );
   }
@@ -325,10 +280,8 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     return _buildSavePage();
   }
 
-  // --- Scoring View (Auto/Tele) ---
   Widget _buildScoring() {
     return Column(children: [
-      // Zone Buttons
       Padding(padding: const EdgeInsets.all(8), child: Row(children: ["Az", "Nz", "Oz"].map((z) => Expanded(child: GestureDetector(
         onTap: ()=>setState(()=>activeZone=z),
         child: Container(margin: const EdgeInsets.all(4), padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: activeZone==z ? const Color(0xFF991B1B) : AppColors.card, borderRadius: BorderRadius.circular(12), border: activeZone==z ? Border.all(color: const Color(0xFFFCA5A5), width: 2) : null), child: Center(child: Text(z, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20))))
@@ -337,7 +290,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]);
   }
 
-  // --- AZ View (Timer + Hub/Outpost) ---
   Widget _buildAzView() {
     return Column(children: [
       Container(margin: const EdgeInsets.all(12), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
@@ -346,11 +298,10 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         Row(children: [ _timeBtn("Start", Colors.green), const SizedBox(width: 5), _timeBtn("Stop", Colors.red), const SizedBox(width: 5), Expanded(child: _btn("Reset", Colors.grey, (){_timer?.cancel(); setState((){timerRunning=false; currentTimes['Az']=0; _saveDraft();});})) ])
       ])),
       Expanded(child: _scoreRow("OUTPOST", "outpost", false)),
-      Expanded(child: _scoreRow("HUB", "hub", true)), // +10 button here
+      Expanded(child: _scoreRow("HUB", "hub", true)),
     ]);
   }
 
-  // --- Pass View (Nz/Oz) ---
   Widget _buildPassView() {
     return Container(margin: const EdgeInsets.all(12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
       Text("Passing ($activeZone)", style: const TextStyle(color: Colors.white, fontSize: 24)),
@@ -363,7 +314,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // --- Score Row Component ---
   Widget _scoreRow(String t, String k, bool ten) {
     return Container(margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(t, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)), Text("${currentScores[k]}", style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold))]),
@@ -376,7 +326,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // --- Ratings View ---
   Widget _buildRatings() {
     return ListView(padding: const EdgeInsets.all(16), children: [
       for(var i in [["Defense", def], ["Shooter", shoot], ["Feeder", feed]]) 
@@ -388,7 +337,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]);
   }
 
-  // --- Finalize View ---
   Widget _buildSavePage() {
     return Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Text("FINALIZE MATCH", style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)), const SizedBox(height: 30),
@@ -410,22 +358,10 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // --- Helpers ---
   Widget _btn(String l, Color c, VoidCallback cb, {bool isBig=false}) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: cb, child: Text(l, style: TextStyle(color: Colors.white, fontSize: isBig?28:16, fontWeight: FontWeight.bold)));
   Widget _timeBtn(String l, Color c) => Expanded(child: _btn(l, c, toggleTimer));
-  
-  // _scoreBtn: Includes FittedBox fix for small screens (prevents line wrapping)
-  Widget _scoreBtn(String l, Color c, VoidCallback cb) => ElevatedButton(
-    style: ElevatedButton.styleFrom(backgroundColor: timerRunning?c:Colors.grey[800], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(0)), 
-    onPressed: timerRunning?cb:null, 
-    child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 28, color: Colors.white)))
-  );
-  
-  Widget _allianceBtn(String l, Color c) => Expanded(child: GestureDetector(
-    onTap: () { setState(()=>alliance=l); _saveDraft(); }, 
-    child: Container(height: 50, decoration: BoxDecoration(color: alliance==l?c:AppColors.card, borderRadius: BorderRadius.circular(8), border: alliance==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l.toUpperCase(), style: TextStyle(color: alliance==l?Colors.white:c, fontWeight: FontWeight.bold))))
-  ));
-  
+  Widget _scoreBtn(String l, Color c, VoidCallback cb) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: timerRunning?c:Colors.grey[800], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(0)), onPressed: timerRunning?cb:null, child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 28, color: Colors.white))));
+  Widget _allianceBtn(String l, Color c) => Expanded(child: GestureDetector(onTap: () { setState(()=>alliance=l); _saveDraft(); }, child: Container(height: 50, decoration: BoxDecoration(color: alliance==l?c:AppColors.card, borderRadius: BorderRadius.circular(8), border: alliance==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l.toUpperCase(), style: TextStyle(color: alliance==l?Colors.white:c, fontWeight: FontWeight.bold))))));
   Widget _input(TextEditingController c, String h, {int lines=1, Color? color, bool isBig=false}) => TextField(controller: c, maxLines: lines, keyboardType: lines==1?TextInputType.number:TextInputType.text, textAlign: isBig?TextAlign.center:TextAlign.start, style: TextStyle(color: Colors.white, fontSize: isBig?28:18, fontWeight: FontWeight.bold), decoration: InputDecoration(hintText: h, hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: color ?? AppColors.card, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12)));
   Widget _ratingSlider(String l, double v, Function(double) f) => Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: const TextStyle(color: Colors.white, fontSize: 18)), Text(v.toInt().toString(), style: const TextStyle(color: Colors.blue, fontSize: 24))]), Slider(value: v, min: 0, max: 5, divisions: 5, onChanged: f)]));
 }
@@ -440,15 +376,24 @@ class PitScoutingScreen extends StatefulWidget {
 }
 
 class _PitScoutingScreenState extends State<PitScoutingScreen> {
-  final teamCtrl = TextEditingController(), wCtrl = TextEditingController(), lCtrl = TextEditingController();
-  final weightCtrl = TextEditingController(), bumpCtrl = TextEditingController(), fuelCtrl = TextEditingController(), commentCtrl = TextEditingController();
+  // TEXT CONTROLLERS (Removed Bumper Thickness, Added Height & Fuel/Sec)
+  final teamCtrl = TextEditingController(), wCtrl = TextEditingController(), lCtrl = TextEditingController(), hCtrl = TextEditingController();
+  final weightCtrl = TextEditingController(), fuelCtrl = TextEditingController(), fpsCtrl = TextEditingController(), commentCtrl = TextEditingController();
+  
+  // TOGGLES & SLIDERS
   bool isSwerve = false, isTank = false, isTrench = false, isBump = false;
-  double stability = 1.0;
+  double stability = 1.0, accuracy = 0.0;
   String climbLvl = "", role = "";
 
   void savePit() async {
     if (teamCtrl.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Missing Team #"), backgroundColor: Colors.red)); return; }
-    PitRecord rec = PitRecord(team: teamCtrl.text, width: wCtrl.text, length: lCtrl.text, weight: weightCtrl.text, bumperThick: bumpCtrl.text, swerve: isSwerve, tank: isTank, fuel: fuelCtrl.text, stability: stability, comments: commentCtrl.text, trench: isTrench, bump: isBump, climbLvl: climbLvl, role: role);
+    PitRecord rec = PitRecord(
+      team: teamCtrl.text, 
+      width: wCtrl.text, length: lCtrl.text, height: hCtrl.text, weight: weightCtrl.text, 
+      swerve: isSwerve, tank: isTank, 
+      fuel: fuelCtrl.text, fuelPerSec: fpsCtrl.text, stability: stability, accuracy: accuracy, comments: commentCtrl.text, 
+      trench: isTrench, bump: isBump, climbLvl: climbLvl, role: role
+    );
     final prefs = await SharedPreferences.getInstance();
     List<String> s = prefs.getStringList('frc_pit') ?? [];
     s.add(jsonEncode(rec.toJson()));
@@ -472,27 +417,44 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
           ])),
           // Content
           Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(children: [
+            
+            // Dimensions Card
             _card("Dimensions", [
-              Row(children: [Expanded(child: _labeledInput(wCtrl, "Width")), const SizedBox(width: 12), Expanded(child: _labeledInput(lCtrl, "Length"))]), const SizedBox(height: 12),
-              _labeledInput(weightCtrl, "Weight"), const SizedBox(height: 12), _labeledInput(bumpCtrl, "Bumper Thickness"),
+              Row(children: [Expanded(child: _labeledInput(wCtrl, "Width (in)")), const SizedBox(width: 12), Expanded(child: _labeledInput(lCtrl, "Length (in)")), const SizedBox(width: 12), Expanded(child: _labeledInput(hCtrl, "Height (in)"))]), 
+              const SizedBox(height: 12),
+              // We pad the weight box with empty Spacers so it doesn't stretch huge across the screen
+              Row(children: [Expanded(child: _labeledInput(weightCtrl, "Weight (lbs)")), const Spacer(flex: 2)]),
             ]),
             const SizedBox(height: 16),
+            
+            // Features Card
             _card("Features", [
               Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Swerve", isSwerve, Colors.greenAccent, ()=>setState((){isSwerve=!isSwerve;if(isSwerve)isTank=false;})), _customToggle("Tank", isTank, Colors.redAccent, ()=>setState((){isTank=!isTank;if(isTank)isSwerve=false;}))]),
-              const SizedBox(height: 16), _labeledInput(fuelCtrl, "Fuel Capacity"), const SizedBox(height: 16),
+              const SizedBox(height: 16), 
+              
+              Row(children: [Expanded(child: _labeledInput(fuelCtrl, "Fuel Capacity")), const SizedBox(width: 12), Expanded(child: _labeledInput(fpsCtrl, "Fuel / Sec"))]), const SizedBox(height: 16),
+              
               Text("Stability: ${stability.toInt()}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               Slider(value: stability, min: 1, max: 5, divisions: 4, activeColor: Colors.redAccent, label: "${stability.toInt()}", onChanged: (v)=>setState(()=>stability=v)),
+              const SizedBox(height: 16),
+              
+              Text("Accuracy: ${accuracy.toInt()}%", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Slider(value: accuracy, min: 0, max: 100, divisions: 10, activeColor: Colors.blueAccent, label: "${accuracy.toInt()}%", onChanged: (v)=>setState(()=>accuracy=v)),
+              const SizedBox(height: 16),
+              
               TextField(controller: commentCtrl, maxLines: 4, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: "Auto Comments", hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFF4B5563), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))))
             ]),
             const SizedBox(height: 16),
+            
+            // Capabilities Card
             _card("Capabilities", [
               Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Trench", isTrench, Colors.greenAccent, ()=>setState(()=>isTrench=!isTrench)), _customToggle("Bump", isBump, Colors.redAccent, ()=>setState(()=>isBump=!isBump))]),
               const SizedBox(height: 16), const Text("Climb Level", style: TextStyle(color: Colors.white, fontSize: 16)), const SizedBox(height: 8),
               Row(children: ["1","2","3"].map((l)=>Expanded(child: GestureDetector(onTap: ()=>setState(()=>climbLvl=l), child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), height: 40, decoration: BoxDecoration(color: climbLvl==l?Colors.orange:Colors.grey[700], borderRadius: BorderRadius.circular(4)), child: Center(child: Text(l, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))))).toList())
             ]),
             const SizedBox(height: 16),
+            
             // Preferred Role Card
-            // UPDATED: Added Colors.amber to "Def" button
             _card("Preferred Role", [Row(children: [_roleBtn("Score", Colors.blue), const SizedBox(width: 8), _roleBtn("Pass", Colors.purpleAccent), const SizedBox(width: 8), _roleBtn("Def", Colors.amber)])]),
             const SizedBox(height: 30),
             ElevatedButton(onPressed: savePit, style: ElevatedButton.styleFrom(backgroundColor: Colors.green, minimumSize: const Size(double.infinity, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), child: const Text("SAVE DATA", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white))),
@@ -506,8 +468,6 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
   Widget _card(String title, List<Widget> children) => Container(width: double.infinity, padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.pitCard, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)), child: Column(children: [Text(title, style: const TextStyle(color: Colors.white, fontSize: 22)), const SizedBox(height: 16), ...children]));
   Widget _labeledInput(TextEditingController c, String l) => Column(children: [SizedBox(height: 45, child: TextField(controller: c, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white), decoration: InputDecoration(filled: true, fillColor: const Color(0xFF4B5563), contentPadding: const EdgeInsets.symmetric(horizontal: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none)))), const SizedBox(height: 4), Text(l, style: const TextStyle(color: Colors.white70, fontSize: 12))]);
   Widget _customToggle(String l, bool a, Color c, VoidCallback t) => GestureDetector(onTap: t, child: Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: a?c:Colors.grey[800], borderRadius: BorderRadius.circular(4))), const SizedBox(width: 10), Text(l, style: const TextStyle(color: Colors.white, fontSize: 18))]));
-  
-  // _roleBtn: Renders a button that glows with the specific color when selected
   Widget _roleBtn(String l, Color c) => Expanded(child: GestureDetector(onTap: ()=>setState(()=>role=l), child: Container(height: 45, decoration: BoxDecoration(color: role==l?c:c.withOpacity(0.3), borderRadius: BorderRadius.circular(4), border: role==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))));
 }
 
@@ -559,9 +519,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               subtitle: Text(sub, style: const TextStyle(color: Colors.grey)),
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                 IconButton(icon: const Icon(Icons.qr_code, color: Colors.white), onPressed: () => showQR(rec)), 
-                // DELETE BUTTON with Warning
                 IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () async {
-                  // Uses "DELETE" as the confirmation button text
                   bool confirm = await _confirmExit(context, "Delete Record?", "This cannot be undone.", yesLabel: "DELETE");
                   if (confirm) deleteItem(i);
                 })
@@ -589,7 +547,6 @@ class QrCodePainter extends CustomPainter {
   QrCodePainter({required this.data});
   @override
   void paint(Canvas c, Size s) {
-    // UPDATED: Version 40 to support large data (notes)
     final qr = QrCode(40, QrErrorCorrectLevel.L)..addData(data);
     final img = QrImage(qr);
     final p = Paint()..style = PaintingStyle.fill..color = Colors.black;
