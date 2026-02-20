@@ -1,22 +1,18 @@
 import 'dart:convert';
 
-// ============================================================================
-// DATA MODELS
-// ============================================================================
-
+// data models for the app
 // ----------------------------------------------------------------------------
 // 1. MATCH RECORD
 // ----------------------------------------------------------------------------
 class MatchRecord {
-  // Metadata
   String matchNum;
   String team;
   String alliance; 
   String timestamp;
   String notes;
   
-  // Auto Data
-  String startPos; // "Left", "Center", "Right" (No default)
+  // auto data
+  String startPos; 
   int preload;
   int autoScoreCount;
   double autoScoreTime;
@@ -24,14 +20,24 @@ class MatchRecord {
   double autoPassTime;
   bool autoPenalty;
   bool autoContrib;
-  int autoL; // Auto Leave Level
+  int autoL; 
   
-  // Teleop Data
-  Map<String, int> teleScores;
-  Map<String, double> teleTimes;
-  int teleL; // Teleop Climb Level
+  // new teleop data
+  int teleColCount;
+  double teleColTime;
+  int teleShootCount;
+  double teleShootTime;
+  int telePassCount;
+  double telePassTime;
+  int teleDefCount;
+  double teleDefTime;
   
-  // Qualitative Ratings
+  String climbPos; 
+  bool disabledTipped;
+  bool telePenalty;
+  int teleL; 
+  
+  // ratings
   double def;
   double shoot;
   double feed;
@@ -42,7 +48,13 @@ class MatchRecord {
     required this.autoScoreCount, required this.autoScoreTime,
     required this.autoPassCount, required this.autoPassTime,
     required this.autoPenalty, required this.autoContrib, required this.autoL,
-    required this.teleScores, required this.teleTimes, required this.teleL,
+    
+    required this.teleColCount, required this.teleColTime,
+    required this.teleShootCount, required this.teleShootTime,
+    required this.telePassCount, required this.telePassTime,
+    required this.teleDefCount, required this.teleDefTime,
+    required this.climbPos, required this.disabledTipped, required this.telePenalty, required this.teleL,
+    
     required this.def, required this.shoot, required this.feed,
   });
 
@@ -53,7 +65,13 @@ class MatchRecord {
       'autoScoreCount': autoScoreCount, 'autoScoreTime': autoScoreTime,
       'autoPassCount': autoPassCount, 'autoPassTime': autoPassTime,
       'autoPenalty': autoPenalty, 'autoContrib': autoContrib, 'autoL': autoL,
-      'teleScores': teleScores, 'teleTimes': teleTimes, 'teleL': teleL,
+      
+      'teleColCount': teleColCount, 'teleColTime': teleColTime,
+      'teleShootCount': teleShootCount, 'teleShootTime': teleShootTime,
+      'telePassCount': telePassCount, 'telePassTime': telePassTime,
+      'teleDefCount': teleDefCount, 'teleDefTime': teleDefTime,
+      'climbPos': climbPos, 'disabledTipped': disabledTipped, 'telePenalty': telePenalty, 'teleL': teleL,
+      
       'def': def, 'shoot': shoot, 'feed': feed,
     };
   }
@@ -62,22 +80,32 @@ class MatchRecord {
     return MatchRecord(
       matchNum: json['matchNum'] ?? "", team: json['team'] ?? "", alliance: json['alliance'] ?? "", timestamp: json['timestamp'] ?? "", notes: json['notes'] ?? "",
       startPos: json['startPos'] ?? "", preload: json['preload'] ?? 0,
-      autoScoreCount: json['autoScoreCount'] ?? 0, autoScoreTime: (json['autoScoreTime'] ?? 0).toDouble(),
-      autoPassCount: json['autoPassCount'] ?? 0, autoPassTime: (json['autoPassTime'] ?? 0).toDouble(),
+      autoScoreCount: json['autoScoreCount'] ?? 0, autoScoreTime: (json['autoScoreTime'] ?? 0.0).toDouble(),
+      autoPassCount: json['autoPassCount'] ?? 0, autoPassTime: (json['autoPassTime'] ?? 0.0).toDouble(),
       autoPenalty: json['autoPenalty'] ?? false, autoContrib: json['autoContrib'] ?? false, autoL: json['autoL'] ?? 0,
-      teleScores: Map<String, int>.from(json['teleScores'] ?? {}), teleTimes: Map<String, double>.from(json['teleTimes'] ?? {}), teleL: json['teleL'] ?? 0,
-      def: (json['def'] ?? 0).toDouble(), shoot: (json['shoot'] ?? 0).toDouble(), feed: (json['feed'] ?? 0).toDouble(),
+      
+      teleColCount: json['teleColCount'] ?? 0, teleColTime: (json['teleColTime'] ?? 0.0).toDouble(),
+      teleShootCount: json['teleShootCount'] ?? 0, teleShootTime: (json['teleShootTime'] ?? 0.0).toDouble(),
+      telePassCount: json['telePassCount'] ?? 0, telePassTime: (json['telePassTime'] ?? 0.0).toDouble(),
+      teleDefCount: json['teleDefCount'] ?? 0, teleDefTime: (json['teleDefTime'] ?? 0.0).toDouble(),
+      climbPos: json['climbPos'] ?? "", disabledTipped: json['disabledTipped'] ?? false, telePenalty: json['telePenalty'] ?? false, teleL: json['teleL'] ?? 0,
+      
+      def: (json['def'] ?? 0.0).toDouble(), shoot: (json['shoot'] ?? 0.0).toDouble(), feed: (json['feed'] ?? 0.0).toDouble(),
     );
   }
 
   String toQRString() {
-    String safeNotes = notes.replaceAll('\n', ' ').replaceAll('\t', ' ');
-    return "$team\t$alliance\t$matchNum\t$startPos\t$preload\t"
-      "$autoScoreCount\t${autoScoreTime.toStringAsFixed(1)}\t$autoPassCount\t${autoPassTime.toStringAsFixed(1)}\t"
-      "${autoPenalty?'Yes':'No'}\t${autoContrib?'Yes':'No'}\t$autoL\t$teleL\t"
-      "${teleScores['outpost']}\t${teleScores['hub']}\t${teleScores['Nz']}\t${teleScores['Oz']}\t"
-      "${teleTimes['Az']?.toStringAsFixed(1)}\t${teleTimes['Nz']?.toStringAsFixed(1)}\t${teleTimes['Oz']?.toStringAsFixed(1)}\t"
-      "${def.toInt()}\t${shoot.toInt()}\t${feed.toInt()}\t$safeNotes"; 
+    // using Y and N for easier reading in the spreadsheet
+    String aPen = autoPenalty ? 'Y' : 'N';
+    String aCon = autoContrib ? 'Y' : 'N';
+    String tDis = disabledTipped ? 'Y' : 'N';
+    String tPen = telePenalty ? 'Y' : 'N';
+
+    return "$matchNum\t$team\t$alliance\t$startPos\t$preload\t$autoScoreCount\t${autoScoreTime.toStringAsFixed(1)}\t"
+           "$autoPassCount\t${autoPassTime.toStringAsFixed(1)}\t$aPen\t$aCon\t$autoL\t"
+           "$teleColCount\t${teleColTime.toStringAsFixed(1)}\t$teleShootCount\t${teleShootTime.toStringAsFixed(1)}\t"
+           "$telePassCount\t${telePassTime.toStringAsFixed(1)}\t$teleDefCount\t${teleDefTime.toStringAsFixed(1)}\t"
+           "$climbPos\t$tDis\t$tPen\t$teleL\t${def.toInt()}\t${shoot.toInt()}\t${feed.toInt()}\t$notes";
   }
 }
 
@@ -85,17 +113,13 @@ class MatchRecord {
 // 2. PIT RECORD
 // ----------------------------------------------------------------------------
 class PitRecord {
-  String team, width, length, height, weight; 
-  bool swerve, tank;
-  String fuel, fuelPerSec; 
-  double stability, accuracy; 
-  String comments;
-  bool trench, bump;
-  String climbLvl, role;
+  String team, width, length, height, weight, fuel, fuelPerSec, comments, climbLvl, role;
+  bool swerve, tank, trench, bump;
+  double stability, accuracy;
 
   PitRecord({required this.team, required this.width, required this.length, required this.height, required this.weight, required this.swerve, required this.tank, required this.fuel, required this.fuelPerSec, required this.stability, required this.accuracy, required this.comments, required this.trench, required this.bump, required this.climbLvl, required this.role});
 
   Map<String, dynamic> toJson() => {'team': team, 'width': width, 'length': length, 'height': height, 'weight': weight, 'swerve': swerve, 'tank': tank, 'fuel': fuel, 'fuelPerSec': fuelPerSec, 'stability': stability, 'accuracy': accuracy, 'comments': comments, 'trench': trench, 'bump': bump, 'climb': climbLvl, 'role': role};
   factory PitRecord.fromJson(Map<String, dynamic> json) => PitRecord(team: json['team'] ?? "", width: json['width'] ?? "", length: json['length'] ?? "", height: json['height'] ?? "", weight: json['weight'] ?? "", swerve: json['swerve'] ?? false, tank: json['tank'] ?? false, fuel: json['fuel'] ?? "", fuelPerSec: json['fuelPerSec'] ?? "", stability: (json['stability'] ?? 1.0).toDouble(), accuracy: (json['accuracy'] ?? 0.0).toDouble(), comments: json['comments'] ?? "", trench: json['trench'] ?? false, bump: json['bump'] ?? false, climbLvl: json['climb'] ?? "", role: json['role'] ?? "");
-  String toQRString() => "$team\t$width\t$length\t$height\t$weight\t${swerve?1:0}\t${tank?1:0}\t$fuel\t$fuelPerSec\t$stability\t$accuracy\t${comments.replaceAll('\n', ' ').replaceAll('\t', ' ')}\t${trench?1:0}\t${bump?1:0}\t$climbLvl\t$role";
+  String toQRString() => "$team\t$width\t$length\t$height\t$weight\t${swerve?1:0}\t${tank?1:0}\t$fuel\t$fuelPerSec\t${stability.toInt()}\t${accuracy.toInt()}\t${trench?1:0}\t${bump?1:0}\t$climbLvl\t$role\t$comments";
 }
