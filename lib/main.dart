@@ -7,13 +7,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qr/qr.dart';
 import 'match_data.dart'; 
 
-// constants & helpers
+// theme colors
 class AppColors {
   static const bg = Color(0xFF0F172A);       
   static const card = Color(0xFF334155);     
   static const pitCard = Color(0xFF1E1B4B);  
 }
 
+// simple exit confirmation dialog
 Future<bool> _confirmExit(BuildContext context, String title, String msg, {String yesLabel = "EXIT"}) async {
   return (await showDialog(
     context: context,
@@ -41,7 +42,7 @@ void main() => runApp(MaterialApp(
   home: const HomeScreen()
 ));
 
-// home screen
+// main dashboard menu
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -97,7 +98,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// match scouting screen
+// match scouting interface
 class MatchScoutingScreen extends StatefulWidget {
   const MatchScoutingScreen({super.key});
   @override
@@ -106,17 +107,16 @@ class MatchScoutingScreen extends StatefulWidget {
 
 class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   int pageIdx = 0; 
-  // removed ratings page, it's now inside teleop
   final List<String> pages = ["Auto", "Teleop", "Finalize"];
   String? alliance; 
   final matchCtrl = TextEditingController();
   final teamCtrl = TextEditingController();
-  final noteCtrl = TextEditingController();
+  final autoNoteCtrl = TextEditingController();
+  final teleNoteCtrl = TextEditingController();
 
-  // auto state
+  // auto variables
   String? startPos; 
   int preload = 0;
-  
   int autoScoreCount = 0;
   double autoScoreTime = 0.0;
   double _currHoldScore = 0.0;
@@ -131,19 +131,22 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   bool autoContrib = false;
   int autoL = 0;
 
-  // new teleop state
+  // teleop variables
+  int teleDefCount = 0; double teleDefTime = 0.0; double _currHoldDef = 0.0; Timer? _defTimer;
   int teleColCount = 0; double teleColTime = 0.0; double _currHoldCol = 0.0; Timer? _colTimer;
   int teleShootCount = 0; double teleShootTime = 0.0; double _currHoldShoot = 0.0; Timer? _shootTimer;
   int telePassCount = 0; double telePassTime = 0.0; double _currHoldPassT = 0.0; Timer? _passTimerT;
-  int teleDefCount = 0; double teleDefTime = 0.0; double _currHoldDef = 0.0; Timer? _defTimer;
   
   String? climbPos;
   bool disabledTipped = false;
   bool telePenalty = false;
-  int teleL = 0;
 
-  // ratings state
-  double def = 0, shoot = 0, feed = 0;
+  // rating sliders (1-5)
+  double rateShoot = 1.0;
+  double rateFeed = 1.0;
+  double rateDef = 1.0;
+  double rateContrib = 1.0;
+  double ratePen = 1.0;
 
   @override 
   void initState() { 
@@ -151,7 +154,8 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     _loadDraft();
     matchCtrl.addListener(_saveDraft);
     teamCtrl.addListener(_saveDraft);
-    noteCtrl.addListener(_saveDraft);
+    autoNoteCtrl.addListener(_saveDraft);
+    teleNoteCtrl.addListener(_saveDraft);
   }
 
   @override 
@@ -165,10 +169,12 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     
     matchCtrl.removeListener(_saveDraft);
     teamCtrl.removeListener(_saveDraft);
-    noteCtrl.removeListener(_saveDraft);
+    autoNoteCtrl.removeListener(_saveDraft);
+    teleNoteCtrl.removeListener(_saveDraft);
     super.dispose(); 
   }
 
+  // loads saved data if the app was accidentally closed
   Future<void> _loadDraft() async {
     final prefs = await SharedPreferences.getInstance();
     String? jsonStr = prefs.getString('match_draft');
@@ -178,7 +184,8 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         setState(() {
           matchCtrl.text = r.matchNum;
           teamCtrl.text = r.team;
-          noteCtrl.text = r.notes;
+          autoNoteCtrl.text = r.autoNotes;
+          teleNoteCtrl.text = r.teleNotes;
           if (r.alliance.isNotEmpty) alliance = r.alliance;
           
           startPos = r.startPos.isEmpty ? null : r.startPos;
@@ -187,42 +194,45 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           autoPassCount = r.autoPassCount; autoPassTime = r.autoPassTime;
           autoPenalty = r.autoPenalty; autoContrib = r.autoContrib; autoL = r.autoL;
 
+          teleDefCount = r.teleDefCount; teleDefTime = r.teleDefTime;
           teleColCount = r.teleColCount; teleColTime = r.teleColTime;
           teleShootCount = r.teleShootCount; teleShootTime = r.teleShootTime;
           telePassCount = r.telePassCount; telePassTime = r.telePassTime;
-          teleDefCount = r.teleDefCount; teleDefTime = r.teleDefTime;
           
           climbPos = r.climbPos.isEmpty ? null : r.climbPos;
           disabledTipped = r.disabledTipped;
           telePenalty = r.telePenalty;
-          teleL = r.teleL;
           
-          def = r.def; shoot = r.shoot; feed = r.feed;
+          rateShoot = r.rateShoot; rateFeed = r.rateFeed; rateDef = r.rateDef;
+          rateContrib = r.rateContrib; ratePen = r.ratePen;
         });
         if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Draft Restored!"), duration: Duration(milliseconds: 1000)));
       } catch (e) { print("Error loading draft: $e"); }
     }
   }
 
+  // writes state to memory so we don't lose anything
   void _saveDraft() async {
     MatchRecord r = MatchRecord(
-      matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance ?? "", timestamp: "", notes: noteCtrl.text,
+      matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance ?? "", timestamp: "",
       startPos: startPos ?? "", preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime,
       autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL,
+      autoNotes: autoNoteCtrl.text,
       
+      teleDefCount: teleDefCount, teleDefTime: teleDefTime,
       teleColCount: teleColCount, teleColTime: teleColTime,
       teleShootCount: teleShootCount, teleShootTime: teleShootTime,
       telePassCount: telePassCount, telePassTime: telePassTime,
-      teleDefCount: teleDefCount, teleDefTime: teleDefTime,
-      climbPos: climbPos ?? "", disabledTipped: disabledTipped, telePenalty: telePenalty, teleL: teleL,
       
-      def: def, shoot: shoot, feed: feed,
+      climbPos: climbPos ?? "", disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text,
+      
+      rateShoot: rateShoot, rateFeed: rateFeed, rateDef: rateDef, rateContrib: rateContrib, ratePen: ratePen,
     );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('match_draft', jsonEncode(r.toJson()));
   }
 
-  // hold timer logic wrapper
+  // helper functions to manage the hold timers cleanly
   void _startTimer(Function(double) onTick, Timer? timerRef, Function(Timer) setTimer) {
     setTimer(Timer.periodic(const Duration(milliseconds: 100), (t) => onTick(0.1)));
   }
@@ -238,13 +248,15 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   void saveMatch() async {
     if (alliance == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Please Select Alliance!"), backgroundColor: Colors.red)); return; }
     if (matchCtrl.text.isEmpty || teamCtrl.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Enter Match & Team #!"), backgroundColor: Colors.red)); return; }
-    if (startPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select a Start Position!"), backgroundColor: Colors.red)); return; }
+    if (startPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select an Auto Start Position!"), backgroundColor: Colors.red)); return; }
+    if (climbPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select a Teleop Climb Position!"), backgroundColor: Colors.red)); return; }
     
     MatchRecord r = MatchRecord(
-      matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance!, timestamp: DateTime.now().toString(), notes: noteCtrl.text,
-      startPos: startPos!, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime, autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL,
-      teleColCount: teleColCount, teleColTime: teleColTime, teleShootCount: teleShootCount, teleShootTime: teleShootTime, telePassCount: telePassCount, telePassTime: telePassTime, teleDefCount: teleDefCount, teleDefTime: teleDefTime,
-      climbPos: climbPos ?? "", disabledTipped: disabledTipped, telePenalty: telePenalty, teleL: teleL, def: def, shoot: shoot, feed: feed,
+      matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance!, timestamp: DateTime.now().toString(),
+      startPos: startPos!, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime, autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL, autoNotes: autoNoteCtrl.text,
+      teleDefCount: teleDefCount, teleDefTime: teleDefTime, teleColCount: teleColCount, teleColTime: teleColTime, teleShootCount: teleShootCount, teleShootTime: teleShootTime, telePassCount: telePassCount, telePassTime: telePassTime,
+      climbPos: climbPos!, disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text, 
+      rateShoot: rateShoot, rateFeed: rateFeed, rateDef: rateDef, rateContrib: rateContrib, ratePen: ratePen,
     );
     
     final prefs = await SharedPreferences.getInstance();
@@ -274,9 +286,10 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           }),
           title: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => setState((){ pageIdx = (pageIdx - 1 + pages.length) % pages.length; })),
-            if(pageIdx < 2) GestureDetector(
-              onTap: () { setState(() { pageIdx==0 ? autoL=(autoL+1)%4 : teleL=(teleL+1)%4; _saveDraft(); }); },
-              child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(12)), child: Text("Lvl ${pageIdx==0?autoL:teleL}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))
+            // level toggle is only visible on the auto page now since tele has climb level buttons
+            if(pageIdx == 0) GestureDetector(
+              onTap: () { setState(() { autoL=(autoL+1)%4; _saveDraft(); }); },
+              child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(12)), child: Text("Lvl $autoL", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))
             ),
             IconButton(icon: const Icon(Icons.arrow_forward_ios, color: Colors.white), onPressed: () => setState((){ pageIdx = (pageIdx + 1) % pages.length; })),
           ]),
@@ -298,7 +311,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     return _buildSavePage();
   }
 
-  // auto view
+  // auto view layout
   Widget _buildAutoView() {
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -352,42 +365,43 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           _largeCheckbox("Penalty", autoPenalty, Colors.redAccent, (v)=>setState((){autoPenalty=v; _saveDraft();})),
           const SizedBox(height: 15),
           _largeCheckbox("Contributed", autoContrib, Colors.greenAccent, (v)=>setState((){autoContrib=v; _saveDraft();})),
+          const SizedBox(height: 20),
+          _input(autoNoteCtrl, "Auto Notes...", lines: 3)
         ])),
       ]),
     );
   }
 
-  // new teleop view
+  // teleop view layout (updated with vertical buttons and specific ratings)
   Widget _buildTeleView() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         
-        // 4 hold timer buttons in a 2x2 grid
-        Row(children: [
-          Expanded(child: SizedBox(height: 160, child: _holdTimerBtn("COLLECT", _currHoldCol, teleColCount, const Color(0xFF16A34A), 
-            (_) => _startTimer((v) => setState(() => _currHoldCol += v), _colTimer, (t) => _colTimer = t),
-            (_) => _endTimer(_colTimer, _currHoldCol, (c, t) => setState(() { teleColCount += c; teleColTime += t; _currHoldCol = 0.0; }))))),
-          const SizedBox(width: 10),
-          Expanded(child: SizedBox(height: 160, child: _holdTimerBtn("SHOOT", _currHoldShoot, teleShootCount, const Color(0xFFDC2626), 
-            (_) => _startTimer((v) => setState(() => _currHoldShoot += v), _shootTimer, (t) => _shootTimer = t),
-            (_) => _endTimer(_shootTimer, _currHoldShoot, (c, t) => setState(() { teleShootCount += c; teleShootTime += t; _currHoldShoot = 0.0; }))))),
-        ]),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(child: SizedBox(height: 160, child: _holdTimerBtn("PASS", _currHoldPassT, telePassCount, const Color(0xFF2563EB), 
-            (_) => _startTimer((v) => setState(() => _currHoldPassT += v), _passTimerT, (t) => _passTimerT = t),
-            (_) => _endTimer(_passTimerT, _currHoldPassT, (c, t) => setState(() { telePassCount += c; telePassTime += t; _currHoldPassT = 0.0; }))))),
-          const SizedBox(width: 10),
-          Expanded(child: SizedBox(height: 160, child: _holdTimerBtn("DEFENSE", _currHoldDef, teleDefCount, const Color(0xFFD97706), 
-            (_) => _startTimer((v) => setState(() => _currHoldDef += v), _defTimer, (t) => _defTimer = t),
-            (_) => _endTimer(_defTimer, _currHoldDef, (c, t) => setState(() { teleDefCount += c; teleDefTime += t; _currHoldDef = 0.0; }))))),
-        ]),
+        // vertical stacked hold timers (big and wide)
+        SizedBox(height: 130, child: _holdTimerBtn("DEFENSE", _currHoldDef, teleDefCount, const Color(0xFFD97706), 
+          (_) => _startTimer((v) => setState(() => _currHoldDef += v), _defTimer, (t) => _defTimer = t),
+          (_) => _endTimer(_defTimer, _currHoldDef, (c, t) => setState(() { teleDefCount += c; teleDefTime += t; _currHoldDef = 0.0; })))),
+        const SizedBox(height: 12),
+        
+        SizedBox(height: 130, child: _holdTimerBtn("COLLECTING", _currHoldCol, teleColCount, const Color(0xFF16A34A), 
+          (_) => _startTimer((v) => setState(() => _currHoldCol += v), _colTimer, (t) => _colTimer = t),
+          (_) => _endTimer(_colTimer, _currHoldCol, (c, t) => setState(() { teleColCount += c; teleColTime += t; _currHoldCol = 0.0; })))),
+        const SizedBox(height: 12),
+
+        SizedBox(height: 130, child: _holdTimerBtn("SHOOTING", _currHoldShoot, teleShootCount, const Color(0xFFDC2626), 
+          (_) => _startTimer((v) => setState(() => _currHoldShoot += v), _shootTimer, (t) => _shootTimer = t),
+          (_) => _endTimer(_shootTimer, _currHoldShoot, (c, t) => setState(() { teleShootCount += c; teleShootTime += t; _currHoldShoot = 0.0; })))),
+        const SizedBox(height: 12),
+        
+        SizedBox(height: 130, child: _holdTimerBtn("PASSING", _currHoldPassT, telePassCount, const Color(0xFF2563EB), 
+          (_) => _startTimer((v) => setState(() => _currHoldPassT += v), _passTimerT, (t) => _passTimerT = t),
+          (_) => _endTimer(_passTimerT, _currHoldPassT, (c, t) => setState(() { telePassCount += c; telePassTime += t; _currHoldPassT = 0.0; })))),
         const SizedBox(height: 16),
 
-        // climb position
-        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
-          const Text("Climb Position", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
+        // climb position selector
+        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: climbPos == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
+          Text(climbPos == null ? "Select Climb Position!" : "Climb Position", style: TextStyle(color: climbPos == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
           Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
             onTap: ()=>setState((){ climbPos = p; _saveDraft(); }),
             child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: climbPos==p ? Colors.blueAccent : Colors.grey[800], borderRadius: BorderRadius.circular(8)), child: Center(child: Text(p, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))))
@@ -395,7 +409,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ])),
         const SizedBox(height: 16),
 
-        // checkboxes
+        // penalty and tipped checkboxes
         Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
           _largeCheckbox("Disabled/Tipped", disabledTipped, Colors.orangeAccent, (v)=>setState((){disabledTipped=v; _saveDraft();})),
           const SizedBox(height: 15),
@@ -403,20 +417,24 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ])),
         const SizedBox(height: 16),
 
-        // ratings sliders
+        // the 5 new rating sliders
         const Text("Qualitative Ratings", textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        for(var i in [["Defense", def], ["Shooter", shoot], ["Feeder", feed]]) 
-          _ratingSlider(i[0] as String, i[1] as double, (v)=>setState((){
-            if(i[0]=="Defense")def=v;else if(i[0]=="Shooter")shoot=v;else feed=v;
-            _saveDraft();
-          })),
+        _ratingSlider("Shooter Accuracy", rateShoot, (v)=>setState((){rateShoot=v; _saveDraft();})),
+        _ratingSlider("Feeding Ability", rateFeed, (v)=>setState((){rateFeed=v; _saveDraft();})),
+        _ratingSlider("Defense", rateDef, (v)=>setState((){rateDef=v; _saveDraft();})),
+        _ratingSlider("Contribution", rateContrib, (v)=>setState((){rateContrib=v; _saveDraft();})),
+        _ratingSlider("Penalty Gain", ratePen, (v)=>setState((){ratePen=v; _saveDraft();})),
+        
+        const SizedBox(height: 16),
+        _input(teleNoteCtrl, "Teleop Notes...", lines: 4),
+        const SizedBox(height: 20),
           
       ]),
     );
   }
 
-  // finalize and save view
+  // final confirmation view
   Widget _buildSavePage() {
     return Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Text("FINALIZE MATCH", style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)), const SizedBox(height: 30),
@@ -426,13 +444,12 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         const SizedBox(width: 15), 
         Expanded(child: Column(children: [ _input(teamCtrl, "T#", isBig: true), const SizedBox(height: 5), const Text("Team Number", style: TextStyle(color: Colors.grey)) ]))
       ]),
-      const SizedBox(height: 20),
-      _input(noteCtrl, "Final Notes...", lines: 3),
       const SizedBox(height: 40),
       SizedBox(width: double.infinity, height: 70, child: _btn("SAVE & EXIT", Colors.green, saveMatch, isBig: true))
     ]));
   }
 
+  // quick input bar for the bottom of the screen
   Widget _buildBottomBar() {
     return Container(padding: const EdgeInsets.all(8), color: const Color(0xFF1E293B), child: Row(children: [
       Expanded(flex: 2, child: Row(children: [_allianceBtn("Red", Colors.red), const SizedBox(width: 5), _allianceBtn("Blue", Colors.blue)])),
@@ -440,7 +457,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // reusable ui bits
+  // reusable ui components
   Widget _btn(String l, Color c, VoidCallback cb, {bool isBig=false}) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: cb, child: Text(l, style: TextStyle(color: Colors.white, fontSize: isBig?28:16, fontWeight: FontWeight.bold)));
   Widget _preloadBtn(String l, Color c, VoidCallback cb) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(0)), onPressed: cb, child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold))));
   Widget _allianceBtn(String l, Color c) => Expanded(child: GestureDetector(onTap: () { setState(()=>alliance=l); _saveDraft(); }, child: Container(height: 50, decoration: BoxDecoration(color: alliance==l?c:AppColors.card, borderRadius: BorderRadius.circular(8), border: alliance==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l.toUpperCase(), style: TextStyle(color: alliance==l?Colors.white:c, fontWeight: FontWeight.bold))))));
@@ -464,17 +481,17 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
       child: Container(
         decoration: BoxDecoration(color: isHolding ? c.withOpacity(0.8) : AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: c, width: 4)),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+          Text("HOLD FOR $title", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2.0)),
           const SizedBox(height: 5),
-          FittedBox(fit: BoxFit.scaleDown, child: Text("${currentHold.toStringAsFixed(1)}s", style: TextStyle(color: isHolding ? Colors.white : Colors.white54, fontSize: 45, fontWeight: FontWeight.bold))),
+          FittedBox(fit: BoxFit.scaleDown, child: Text("${currentHold.toStringAsFixed(1)}s", style: TextStyle(color: isHolding ? Colors.white : Colors.white54, fontSize: 50, fontWeight: FontWeight.bold))),
           const SizedBox(height: 5),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(8)), child: Text("Count: $count", style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))
+          Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(8)), child: Text("Count: $count", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)))
         ]),
       ),
     );
   }
 
-  Widget _ratingSlider(String l, double v, Function(double) f) => Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: const TextStyle(color: Colors.white, fontSize: 18)), Text(v.toInt().toString(), style: const TextStyle(color: Colors.blue, fontSize: 24))]), Slider(value: v, min: 0, max: 5, divisions: 5, onChanged: f)]));
+  Widget _ratingSlider(String l, double v, Function(double) f) => Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: const TextStyle(color: Colors.white, fontSize: 18)), Text(v.toInt().toString(), style: const TextStyle(color: Colors.blue, fontSize: 24))]), Slider(value: v, min: 1, max: 5, divisions: 4, onChanged: f)]));
 }
 
 // pit scouting screen
@@ -518,7 +535,7 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
   Widget _roleBtn(String l, Color c) => Expanded(child: GestureDetector(onTap: ()=>setState(()=>role=l), child: Container(height: 45, decoration: BoxDecoration(color: role==l?c:c.withOpacity(0.3), borderRadius: BorderRadius.circular(4), border: role==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))));
 }
 
-// history screen
+// history menu
 class HistoryScreen extends StatefulWidget { final bool isPit; const HistoryScreen({required this.isPit, super.key}); @override State<HistoryScreen> createState() => _HistoryScreenState(); }
 class _HistoryScreenState extends State<HistoryScreen> {
   List<dynamic> history = [];
@@ -544,7 +561,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override Widget build(BuildContext context) { return Scaffold(backgroundColor: AppColors.bg, appBar: AppBar(title: Text(widget.isPit ? "Pit History" : "Match History"), backgroundColor: widget.isPit ? Colors.blue : Colors.amber[800]), body: history.isEmpty ? const Center(child: Text("No Records Found", style: TextStyle(color: Colors.white, fontSize: 20))) : ListView.builder(itemCount: history.length, itemBuilder: (ctx, i) { final rec = history[i]; String title = widget.isPit ? "Team ${rec.team}" : "Match ${rec.matchNum} | Team ${rec.team}"; String sub = widget.isPit ? "Role: ${rec.role}" : "${rec.alliance} | ${rec.timestamp.split(' ')[0]}"; return Card(color: AppColors.card, margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), child: ListTile(title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), subtitle: Text(sub, style: const TextStyle(color: Colors.grey)), trailing: Row(mainAxisSize: MainAxisSize.min, children: [ IconButton(icon: const Icon(Icons.qr_code, color: Colors.white), onPressed: () => showQR(rec)), IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () async { bool confirm = await _confirmExit(context, "Delete Record?", "This cannot be undone.", yesLabel: "DELETE"); if (confirm) deleteItem(i); }) ]))); })); }
 }
 
-// qr painter
+// paints the qr codes onto the screen
 class QrCodePainter extends CustomPainter { 
   final String data; 
   QrCodePainter({required this.data}); 
