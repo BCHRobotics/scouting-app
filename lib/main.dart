@@ -7,10 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qr/qr.dart';
 import 'match_data.dart'; 
 
-// ============================================================================
-// SECTION 0: CONSTANTS & HELPERS
-// ============================================================================
-
+// constants & helpers
 class AppColors {
   static const bg = Color(0xFF0F172A);       
   static const card = Color(0xFF334155);     
@@ -44,9 +41,7 @@ void main() => runApp(MaterialApp(
   home: const HomeScreen()
 ));
 
-// ============================================================================
-// SECTION 1: HOME SCREEN
-// ============================================================================
+// home screen
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -102,9 +97,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// ============================================================================
-// SECTION 2: MATCH SCOUTING SCREEN
-// ============================================================================
+// match scouting screen
 class MatchScoutingScreen extends StatefulWidget {
   const MatchScoutingScreen({super.key});
   @override
@@ -113,14 +106,15 @@ class MatchScoutingScreen extends StatefulWidget {
 
 class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   int pageIdx = 0; 
-  final List<String> pages = ["Auto", "Tele", "Ratings", "Finalize"];
+  // removed ratings page, it's now inside teleop
+  final List<String> pages = ["Auto", "Teleop", "Finalize"];
   String? alliance; 
   final matchCtrl = TextEditingController();
   final teamCtrl = TextEditingController();
   final noteCtrl = TextEditingController();
 
-  // --- AUTO STATE ---
-  String? startPos; // NULL BY DEFAULT
+  // auto state
+  String? startPos; 
   int preload = 0;
   
   int autoScoreCount = 0;
@@ -137,15 +131,18 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   bool autoContrib = false;
   int autoL = 0;
 
-  // --- TELEOP STATE ---
-  String activeZone = "Az"; 
-  bool teleTimerRunning = false;
-  Timer? _teleTimer;
-  Map<String, int> teleScores = {"outpost": 0, "hub": 0, "Nz": 0, "Oz": 0};
-  Map<String, double> teleTimes = {"Az": 0.0, "Nz": 0.0, "Oz": 0.0};
+  // new teleop state
+  int teleColCount = 0; double teleColTime = 0.0; double _currHoldCol = 0.0; Timer? _colTimer;
+  int teleShootCount = 0; double teleShootTime = 0.0; double _currHoldShoot = 0.0; Timer? _shootTimer;
+  int telePassCount = 0; double telePassTime = 0.0; double _currHoldPassT = 0.0; Timer? _passTimerT;
+  int teleDefCount = 0; double teleDefTime = 0.0; double _currHoldDef = 0.0; Timer? _defTimer;
+  
+  String? climbPos;
+  bool disabledTipped = false;
+  bool telePenalty = false;
   int teleL = 0;
 
-  // --- RATINGS STATE ---
+  // ratings state
   double def = 0, shoot = 0, feed = 0;
 
   @override 
@@ -161,7 +158,11 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   void dispose() { 
     _scoreTimer?.cancel();
     _passTimer?.cancel();
-    _teleTimer?.cancel(); 
+    _colTimer?.cancel();
+    _shootTimer?.cancel();
+    _passTimerT?.cancel();
+    _defTimer?.cancel();
+    
     matchCtrl.removeListener(_saveDraft);
     teamCtrl.removeListener(_saveDraft);
     noteCtrl.removeListener(_saveDraft);
@@ -182,16 +183,18 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           
           startPos = r.startPos.isEmpty ? null : r.startPos;
           preload = r.preload;
-          autoScoreCount = r.autoScoreCount;
-          autoScoreTime = r.autoScoreTime;
-          autoPassCount = r.autoPassCount;
-          autoPassTime = r.autoPassTime;
-          autoPenalty = r.autoPenalty;
-          autoContrib = r.autoContrib;
-          autoL = r.autoL;
+          autoScoreCount = r.autoScoreCount; autoScoreTime = r.autoScoreTime;
+          autoPassCount = r.autoPassCount; autoPassTime = r.autoPassTime;
+          autoPenalty = r.autoPenalty; autoContrib = r.autoContrib; autoL = r.autoL;
 
-          teleScores = Map.from(r.teleScores);
-          teleTimes = Map.from(r.teleTimes);
+          teleColCount = r.teleColCount; teleColTime = r.teleColTime;
+          teleShootCount = r.teleShootCount; teleShootTime = r.teleShootTime;
+          telePassCount = r.telePassCount; telePassTime = r.telePassTime;
+          teleDefCount = r.teleDefCount; teleDefTime = r.teleDefTime;
+          
+          climbPos = r.climbPos.isEmpty ? null : r.climbPos;
+          disabledTipped = r.disabledTipped;
+          telePenalty = r.telePenalty;
           teleL = r.teleL;
           
           def = r.def; shoot = r.shoot; feed = r.feed;
@@ -206,62 +209,30 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance ?? "", timestamp: "", notes: noteCtrl.text,
       startPos: startPos ?? "", preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime,
       autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL,
-      teleScores: teleScores, teleTimes: teleTimes, teleL: teleL,
+      
+      teleColCount: teleColCount, teleColTime: teleColTime,
+      teleShootCount: teleShootCount, teleShootTime: teleShootTime,
+      telePassCount: telePassCount, telePassTime: telePassTime,
+      teleDefCount: teleDefCount, teleDefTime: teleDefTime,
+      climbPos: climbPos ?? "", disabledTipped: disabledTipped, telePenalty: telePenalty, teleL: teleL,
+      
       def: def, shoot: shoot, feed: feed,
     );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('match_draft', jsonEncode(r.toJson()));
   }
 
-  // --- HOLD TIMERS LOGIC ---
-  void _startScoreTimer(TapDownDetails details) {
-    _currHoldScore = 0.0;
-    _scoreTimer = Timer.periodic(const Duration(milliseconds: 100), (t) {
-      setState(() => _currHoldScore += 0.1);
-    });
+  // hold timer logic wrapper
+  void _startTimer(Function(double) onTick, Timer? timerRef, Function(Timer) setTimer) {
+    setTimer(Timer.periodic(const Duration(milliseconds: 100), (t) => onTick(0.1)));
   }
-  void _endScoreTimer(dynamic details) {
-    _scoreTimer?.cancel();
-    setState(() {
-      if (_currHoldScore > 0) {
-        autoScoreCount++;
-        autoScoreTime += _currHoldScore;
-      }
-      _currHoldScore = 0.0;
-    });
-    _saveDraft();
-  }
-
-  void _startPassTimer(TapDownDetails details) {
-    _currHoldPass = 0.0;
-    _passTimer = Timer.periodic(const Duration(milliseconds: 100), (t) {
-      setState(() => _currHoldPass += 0.1);
-    });
-  }
-  void _endPassTimer(dynamic details) {
-    _passTimer?.cancel();
-    setState(() {
-      if (_currHoldPass > 0) {
-        autoPassCount++;
-        autoPassTime += _currHoldPass;
-      }
-      _currHoldPass = 0.0;
-    });
-    _saveDraft();
-  }
-
-  // --- TELEOP TIMER LOGIC ---
-  void toggleTeleTimer() {
-    setState(() => teleTimerRunning = !teleTimerRunning);
-    if (teleTimerRunning) {
-      _teleTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-        setState(() => teleTimes[activeZone] = (teleTimes[activeZone] ?? 0) + 0.1);
-        _saveDraft(); 
-      });
-    } else { 
-      _teleTimer?.cancel();
-      _saveDraft();
+  
+  void _endTimer(Timer? timerRef, double currentHold, Function(int, double) onComplete) {
+    timerRef?.cancel();
+    if (currentHold > 0) {
+      onComplete(1, currentHold);
     }
+    _saveDraft();
   }
 
   void saveMatch() async {
@@ -272,7 +243,8 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     MatchRecord r = MatchRecord(
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance!, timestamp: DateTime.now().toString(), notes: noteCtrl.text,
       startPos: startPos!, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime, autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL,
-      teleScores: teleScores, teleTimes: teleTimes, teleL: teleL, def: def, shoot: shoot, feed: feed,
+      teleColCount: teleColCount, teleColTime: teleColTime, teleShootCount: teleShootCount, teleShootTime: teleShootTime, telePassCount: telePassCount, telePassTime: telePassTime, teleDefCount: teleDefCount, teleDefTime: teleDefTime,
+      climbPos: climbPos ?? "", disabledTipped: disabledTipped, telePenalty: telePenalty, teleL: teleL, def: def, shoot: shoot, feed: feed,
     );
     
     final prefs = await SharedPreferences.getInstance();
@@ -286,7 +258,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    Color headColor = [const Color(0xFFD97706), const Color(0xFF2563EB), const Color(0xFF16A34A), Colors.purple][pageIdx];
+    Color headColor = [const Color(0xFFD97706), const Color(0xFF2563EB), Colors.purple][pageIdx];
     
     return PopScope(
       canPop: false,
@@ -301,19 +273,19 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
             if(await _confirmExit(context, "Exit Scouting?", "Draft will be saved.") && mounted) Navigator.pop(context); 
           }),
           title: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => setState((){ _teleTimer?.cancel(); teleTimerRunning=false; pageIdx = (pageIdx - 1 + pages.length) % pages.length; })),
+            IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => setState((){ pageIdx = (pageIdx - 1 + pages.length) % pages.length; })),
             if(pageIdx < 2) GestureDetector(
               onTap: () { setState(() { pageIdx==0 ? autoL=(autoL+1)%4 : teleL=(teleL+1)%4; _saveDraft(); }); },
-              child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: (pageIdx==1 && teleTimerRunning) ? Colors.blue : Colors.grey[700], borderRadius: BorderRadius.circular(12)), child: Text("Lvl ${pageIdx==0?autoL:teleL}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))
+              child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(12)), child: Text("Lvl ${pageIdx==0?autoL:teleL}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))
             ),
-            IconButton(icon: const Icon(Icons.arrow_forward_ios, color: Colors.white), onPressed: () => setState((){ _teleTimer?.cancel(); teleTimerRunning=false; pageIdx = (pageIdx + 1) % pages.length; })),
+            IconButton(icon: const Icon(Icons.arrow_forward_ios, color: Colors.white), onPressed: () => setState((){ pageIdx = (pageIdx + 1) % pages.length; })),
           ]),
         ),
         body: SafeArea(
           child: Column(children: [
             Container(width: double.infinity, padding: const EdgeInsets.all(10), color: headColor, child: Text(pages[pageIdx].toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white))),
             Expanded(child: _buildBody()),
-            if(pageIdx != 3) _buildBottomBar()
+            if(pageIdx != 2) _buildBottomBar()
           ]),
         ),
       ),
@@ -323,13 +295,10 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   Widget _buildBody() {
     if(pageIdx == 0) return _buildAutoView();
     if(pageIdx == 1) return _buildTeleView();
-    if(pageIdx == 2) return _buildRatings();
     return _buildSavePage();
   }
 
-  // --------------------------------------------------------------------------
-  // AUTO VIEW
-  // --------------------------------------------------------------------------
+  // auto view
   Widget _buildAutoView() {
     final screenHeight = MediaQuery.of(context).size.height;
 
@@ -337,7 +306,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         
-        // 1. START POSITION
         Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: startPos == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
           Text(startPos == null ? "Select Start Position!" : "Start Position", style: TextStyle(color: startPos == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
           Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
@@ -347,7 +315,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ])),
         const SizedBox(height: 12),
 
-        // 2. PRELOAD SCORING
         Container(
           height: screenHeight * 0.15, 
           padding: const EdgeInsets.all(12), 
@@ -363,133 +330,93 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ),
         const SizedBox(height: 12),
 
-        // 3. HOLD TO SCORE
         SizedBox(
           height: screenHeight * 0.25, 
-          child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), _startScoreTimer, _endScoreTimer)
+          child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), 
+            (_) => _startTimer((v) => setState(() => _currHoldScore += v), _scoreTimer, (t) => _scoreTimer = t),
+            (_) => _endTimer(_scoreTimer, _currHoldScore, (c, t) => setState(() { autoScoreCount += c; autoScoreTime += t; _currHoldScore = 0.0; }))
+          )
         ),
         const SizedBox(height: 12),
 
-        // 4. HOLD TO PASS
         SizedBox(
           height: screenHeight * 0.25, 
-          child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), _startPassTimer, _endPassTimer)
+          child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), 
+            (_) => _startTimer((v) => setState(() => _currHoldPass += v), _passTimer, (t) => _passTimer = t),
+            (_) => _endTimer(_passTimer, _currHoldPass, (c, t) => setState(() { autoPassCount += c; autoPassTime += t; _currHoldPass = 0.0; }))
+          )
         ),
         const SizedBox(height: 12),
 
-        // 5. BIG CHECKBOXES & NOTES
         Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
-          GestureDetector(
-            onTap: () => setState((){autoPenalty = !autoPenalty; _saveDraft();}),
-            child: Row(children: [
-              Transform.scale(scale: 1.8, child: Checkbox(activeColor: Colors.redAccent, checkColor: Colors.white, value: autoPenalty, onChanged: (v)=>setState((){autoPenalty=v!; _saveDraft();}))),
-              const SizedBox(width: 15),
-              const Text("Penalty", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-            ]),
-          ),
+          _largeCheckbox("Penalty", autoPenalty, Colors.redAccent, (v)=>setState((){autoPenalty=v; _saveDraft();})),
           const SizedBox(height: 15),
-          
-          GestureDetector(
-            onTap: () => setState((){autoContrib = !autoContrib; _saveDraft();}),
-            child: Row(children: [
-              Transform.scale(scale: 1.8, child: Checkbox(activeColor: Colors.greenAccent, checkColor: Colors.black, value: autoContrib, onChanged: (v)=>setState((){autoContrib=v!; _saveDraft();}))),
-              const SizedBox(width: 15),
-              const Text("Contributed", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-            ]),
-          ),
-          
-          const SizedBox(height: 20),
-          _input(noteCtrl, "Auto Notes...", lines: 3)
+          _largeCheckbox("Contributed", autoContrib, Colors.greenAccent, (v)=>setState((){autoContrib=v; _saveDraft();})),
         ])),
       ]),
     );
   }
 
-  Widget _preloadBtn(String l, Color c, VoidCallback cb) => ElevatedButton(
-    style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(0)), 
-    onPressed: cb, 
-    child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold)))
-  );
-
-  Widget _holdTimerBtn(String title, double currentHold, int count, Color c, Function(TapDownDetails) onDown, Function(dynamic) onUp) {
-    bool isHolding = currentHold > 0;
-    return GestureDetector(
-      onTapDown: onDown, onTapUp: onUp, onTapCancel: () => onUp(null),
-      child: Container(
-        decoration: BoxDecoration(color: isHolding ? c.withOpacity(0.8) : AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: c, width: 4)),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text("HOLD TO $title", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2.0)),
-          const SizedBox(height: 10),
-          FittedBox(fit: BoxFit.scaleDown, child: Text("${currentHold.toStringAsFixed(1)}s", style: TextStyle(color: isHolding ? Colors.white : Colors.white54, fontSize: 65, fontWeight: FontWeight.bold))),
-          const SizedBox(height: 10),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(12)), child: Text("Count: $count", style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)))
+  // new teleop view
+  Widget _buildTeleView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        
+        // 4 hold timer buttons in a 2x2 grid
+        Row(children: [
+          Expanded(child: SizedBox(height: 160, child: _holdTimerBtn("COLLECT", _currHoldCol, teleColCount, const Color(0xFF16A34A), 
+            (_) => _startTimer((v) => setState(() => _currHoldCol += v), _colTimer, (t) => _colTimer = t),
+            (_) => _endTimer(_colTimer, _currHoldCol, (c, t) => setState(() { teleColCount += c; teleColTime += t; _currHoldCol = 0.0; }))))),
+          const SizedBox(width: 10),
+          Expanded(child: SizedBox(height: 160, child: _holdTimerBtn("SHOOT", _currHoldShoot, teleShootCount, const Color(0xFFDC2626), 
+            (_) => _startTimer((v) => setState(() => _currHoldShoot += v), _shootTimer, (t) => _shootTimer = t),
+            (_) => _endTimer(_shootTimer, _currHoldShoot, (c, t) => setState(() { teleShootCount += c; teleShootTime += t; _currHoldShoot = 0.0; }))))),
         ]),
-      ),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: SizedBox(height: 160, child: _holdTimerBtn("PASS", _currHoldPassT, telePassCount, const Color(0xFF2563EB), 
+            (_) => _startTimer((v) => setState(() => _currHoldPassT += v), _passTimerT, (t) => _passTimerT = t),
+            (_) => _endTimer(_passTimerT, _currHoldPassT, (c, t) => setState(() { telePassCount += c; telePassTime += t; _currHoldPassT = 0.0; }))))),
+          const SizedBox(width: 10),
+          Expanded(child: SizedBox(height: 160, child: _holdTimerBtn("DEFENSE", _currHoldDef, teleDefCount, const Color(0xFFD97706), 
+            (_) => _startTimer((v) => setState(() => _currHoldDef += v), _defTimer, (t) => _defTimer = t),
+            (_) => _endTimer(_defTimer, _currHoldDef, (c, t) => setState(() { teleDefCount += c; teleDefTime += t; _currHoldDef = 0.0; }))))),
+        ]),
+        const SizedBox(height: 16),
+
+        // climb position
+        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
+          const Text("Climb Position", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
+          Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
+            onTap: ()=>setState((){ climbPos = p; _saveDraft(); }),
+            child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: climbPos==p ? Colors.blueAccent : Colors.grey[800], borderRadius: BorderRadius.circular(8)), child: Center(child: Text(p, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))))
+          ))).toList()),
+        ])),
+        const SizedBox(height: 16),
+
+        // checkboxes
+        Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
+          _largeCheckbox("Disabled/Tipped", disabledTipped, Colors.orangeAccent, (v)=>setState((){disabledTipped=v; _saveDraft();})),
+          const SizedBox(height: 15),
+          _largeCheckbox("Penalty", telePenalty, Colors.redAccent, (v)=>setState((){telePenalty=v; _saveDraft();})),
+        ])),
+        const SizedBox(height: 16),
+
+        // ratings sliders
+        const Text("Qualitative Ratings", textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        for(var i in [["Defense", def], ["Shooter", shoot], ["Feeder", feed]]) 
+          _ratingSlider(i[0] as String, i[1] as double, (v)=>setState((){
+            if(i[0]=="Defense")def=v;else if(i[0]=="Shooter")shoot=v;else feed=v;
+            _saveDraft();
+          })),
+          
+      ]),
     );
   }
 
-  // --------------------------------------------------------------------------
-  // TELEOP VIEW
-  // --------------------------------------------------------------------------
-  Widget _buildTeleView() {
-    return Column(children: [
-      Padding(padding: const EdgeInsets.all(8), child: Row(children: ["Az", "Nz", "Oz"].map((z) => Expanded(child: GestureDetector(
-        onTap: ()=>setState(()=>activeZone=z),
-        child: Container(margin: const EdgeInsets.all(4), padding: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: activeZone==z ? const Color(0xFF991B1B) : AppColors.card, borderRadius: BorderRadius.circular(12), border: activeZone==z ? Border.all(color: const Color(0xFFFCA5A5), width: 2) : null), child: Center(child: Text(z, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20))))
-      ))).toList())),
-      Expanded(child: activeZone == "Az" ? _buildTeleAzView() : _buildTelePassView()),
-    ]);
-  }
-
-  Widget _buildTeleAzView() {
-    return Column(children: [
-      Container(margin: const EdgeInsets.all(12), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
-        Text(teleTimerRunning ? "RUNNING" : "PAUSED", style: TextStyle(color: teleTimerRunning ? Colors.green : Colors.red, fontSize: 12)),
-        Text("${(teleTimes['Az']??0).toStringAsFixed(1)}s", style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold)),
-        Row(children: [ Expanded(child:_btn("Start", Colors.green, toggleTeleTimer)), const SizedBox(width: 5), Expanded(child:_btn("Stop", Colors.red, toggleTeleTimer)), const SizedBox(width: 5), Expanded(child: _btn("Reset", Colors.grey, (){_teleTimer?.cancel(); setState((){teleTimerRunning=false; teleTimes['Az']=0; _saveDraft();});})) ])
-      ])),
-      Expanded(child: _teleScoreRow("OUTPOST", "outpost", false)),
-      Expanded(child: _teleScoreRow("HUB", "hub", true)),
-    ]);
-  }
-
-  Widget _buildTelePassView() {
-    return Container(margin: const EdgeInsets.all(12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
-      Text("Passing ($activeZone)", style: const TextStyle(color: Colors.white, fontSize: 24)),
-      Expanded(flex: 3, child: Center(child: Text("${teleScores[activeZone]}", style: const TextStyle(color: Colors.white, fontSize: 100, fontWeight: FontWeight.bold)))),
-      Expanded(flex: 4, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Expanded(flex: 1, child: _scoreBtn("-1", const Color(0xFF991B1B), () { setState((){ if((teleScores[activeZone]??0)>0) teleScores[activeZone] = (teleScores[activeZone]??0)-1; }); _saveDraft();})), 
-        const SizedBox(width: 15),
-        Expanded(flex: 2, child: _scoreBtn("+1", const Color(0xFF15803D), () { setState(()=> teleScores[activeZone] = (teleScores[activeZone]??0)+1); _saveDraft();})),
-      ]))
-    ]));
-  }
-
-  Widget _teleScoreRow(String t, String k, bool ten) {
-    return Container(margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(t, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)), Text("${teleScores[k]}", style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold))]),
-      Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Expanded(flex: 1, child: _scoreBtn("-1", const Color(0xFF991B1B), () { setState((){ if((teleScores[k]??0)>0) teleScores[k] = (teleScores[k]??0)-1; }); _saveDraft();})), 
-        const SizedBox(width: 10),
-        Expanded(flex: 2, child: _scoreBtn("+1", const Color(0xFF15803D), () { setState(()=> teleScores[k] = (teleScores[k]??0)+1); _saveDraft();})),
-        if(ten) ...[const SizedBox(width: 10), Expanded(flex: 2, child: _scoreBtn("+10", const Color(0xFF15803D), () { setState(()=> teleScores[k] = (teleScores[k]??0)+10); _saveDraft();}))]
-      ]))
-    ]));
-  }
-
-  // --------------------------------------------------------------------------
-  // RATINGS & SAVE VIEWS
-  // --------------------------------------------------------------------------
-  Widget _buildRatings() {
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      for(var i in [["Defense", def], ["Shooter", shoot], ["Feeder", feed]]) 
-        _ratingSlider(i[0] as String, i[1] as double, (v)=>setState((){
-          if(i[0]=="Defense")def=v;else if(i[0]=="Shooter")shoot=v;else feed=v;
-          _saveDraft();
-        })),
-    ]);
-  }
-
+  // finalize and save view
   Widget _buildSavePage() {
     return Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Text("FINALIZE MATCH", style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)), const SizedBox(height: 30),
@@ -499,7 +426,9 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         const SizedBox(width: 15), 
         Expanded(child: Column(children: [ _input(teamCtrl, "T#", isBig: true), const SizedBox(height: 5), const Text("Team Number", style: TextStyle(color: Colors.grey)) ]))
       ]),
-      const SizedBox(height: 50),
+      const SizedBox(height: 20),
+      _input(noteCtrl, "Final Notes...", lines: 3),
+      const SizedBox(height: 40),
       SizedBox(width: double.infinity, height: 70, child: _btn("SAVE & EXIT", Colors.green, saveMatch, isBig: true))
     ]));
   }
@@ -511,17 +440,44 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // --- REUSABLE WIDGETS ---
+  // reusable ui bits
   Widget _btn(String l, Color c, VoidCallback cb, {bool isBig=false}) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: cb, child: Text(l, style: TextStyle(color: Colors.white, fontSize: isBig?28:16, fontWeight: FontWeight.bold)));
-  Widget _scoreBtn(String l, Color c, VoidCallback cb) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: (pageIdx==1 && teleTimerRunning)?c:Colors.grey[800], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(0)), onPressed: (pageIdx==1 && teleTimerRunning)?cb:null, child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 28, color: Colors.white))));
+  Widget _preloadBtn(String l, Color c, VoidCallback cb) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(0)), onPressed: cb, child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold))));
   Widget _allianceBtn(String l, Color c) => Expanded(child: GestureDetector(onTap: () { setState(()=>alliance=l); _saveDraft(); }, child: Container(height: 50, decoration: BoxDecoration(color: alliance==l?c:AppColors.card, borderRadius: BorderRadius.circular(8), border: alliance==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l.toUpperCase(), style: TextStyle(color: alliance==l?Colors.white:c, fontWeight: FontWeight.bold))))));
   Widget _input(TextEditingController c, String h, {int lines=1, Color? color, bool isBig=false}) => TextField(controller: c, maxLines: lines, keyboardType: lines==1?TextInputType.number:TextInputType.text, textAlign: isBig?TextAlign.center:TextAlign.start, style: TextStyle(color: Colors.white, fontSize: isBig?28:18, fontWeight: FontWeight.bold), decoration: InputDecoration(hintText: h, hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: color ?? AppColors.card, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12)));
+  
+  Widget _largeCheckbox(String title, bool val, Color c, Function(bool) onChanged) {
+    return GestureDetector(
+      onTap: () => onChanged(!val),
+      child: Row(children: [
+        Transform.scale(scale: 1.8, child: Checkbox(activeColor: c, checkColor: Colors.white, value: val, onChanged: (v) => onChanged(v!))),
+        const SizedBox(width: 15),
+        Text(title, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+      ]),
+    );
+  }
+
+  Widget _holdTimerBtn(String title, double currentHold, int count, Color c, Function(TapDownDetails) onDown, Function(dynamic) onUp) {
+    bool isHolding = currentHold > 0;
+    return GestureDetector(
+      onTapDown: onDown, onTapUp: onUp, onTapCancel: () => onUp(null),
+      child: Container(
+        decoration: BoxDecoration(color: isHolding ? c.withOpacity(0.8) : AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: c, width: 4)),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+          const SizedBox(height: 5),
+          FittedBox(fit: BoxFit.scaleDown, child: Text("${currentHold.toStringAsFixed(1)}s", style: TextStyle(color: isHolding ? Colors.white : Colors.white54, fontSize: 45, fontWeight: FontWeight.bold))),
+          const SizedBox(height: 5),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(8)), child: Text("Count: $count", style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))
+        ]),
+      ),
+    );
+  }
+
   Widget _ratingSlider(String l, double v, Function(double) f) => Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: const TextStyle(color: Colors.white, fontSize: 18)), Text(v.toInt().toString(), style: const TextStyle(color: Colors.blue, fontSize: 24))]), Slider(value: v, min: 0, max: 5, divisions: 5, onChanged: f)]));
 }
 
-// ============================================================================
-// SECTION 3: PIT SCOUTING SCREEN
-// ============================================================================
+// pit scouting screen
 class PitScoutingScreen extends StatefulWidget { const PitScoutingScreen({super.key}); @override State<PitScoutingScreen> createState() => _PitScoutingScreenState(); }
 class _PitScoutingScreenState extends State<PitScoutingScreen> {
   final teamCtrl = TextEditingController(), wCtrl = TextEditingController(), lCtrl = TextEditingController(), hCtrl = TextEditingController();
@@ -561,9 +517,8 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
   Widget _customToggle(String l, bool a, Color c, VoidCallback t) => GestureDetector(onTap: t, child: Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: a?c:Colors.grey[800], borderRadius: BorderRadius.circular(4))), const SizedBox(width: 10), Text(l, style: const TextStyle(color: Colors.white, fontSize: 18))]));
   Widget _roleBtn(String l, Color c) => Expanded(child: GestureDetector(onTap: ()=>setState(()=>role=l), child: Container(height: 45, decoration: BoxDecoration(color: role==l?c:c.withOpacity(0.3), borderRadius: BorderRadius.circular(4), border: role==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))));
 }
-// ============================================================================
-// SECTION 4: HISTORY SCREEN
-// ============================================================================
+
+// history screen
 class HistoryScreen extends StatefulWidget { final bool isPit; const HistoryScreen({required this.isPit, super.key}); @override State<HistoryScreen> createState() => _HistoryScreenState(); }
 class _HistoryScreenState extends State<HistoryScreen> {
   List<dynamic> history = [];
@@ -577,7 +532,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       backgroundColor: AppColors.card,
       title: Text(header, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)), 
       content: Container(
-        
         width: 320, height: 320, 
         padding: const EdgeInsets.all(16), 
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
@@ -590,9 +544,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override Widget build(BuildContext context) { return Scaffold(backgroundColor: AppColors.bg, appBar: AppBar(title: Text(widget.isPit ? "Pit History" : "Match History"), backgroundColor: widget.isPit ? Colors.blue : Colors.amber[800]), body: history.isEmpty ? const Center(child: Text("No Records Found", style: TextStyle(color: Colors.white, fontSize: 20))) : ListView.builder(itemCount: history.length, itemBuilder: (ctx, i) { final rec = history[i]; String title = widget.isPit ? "Team ${rec.team}" : "Match ${rec.matchNum} | Team ${rec.team}"; String sub = widget.isPit ? "Role: ${rec.role}" : "${rec.alliance} | ${rec.timestamp.split(' ')[0]}"; return Card(color: AppColors.card, margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), child: ListTile(title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), subtitle: Text(sub, style: const TextStyle(color: Colors.grey)), trailing: Row(mainAxisSize: MainAxisSize.min, children: [ IconButton(icon: const Icon(Icons.qr_code, color: Colors.white), onPressed: () => showQR(rec)), IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () async { bool confirm = await _confirmExit(context, "Delete Record?", "This cannot be undone.", yesLabel: "DELETE"); if (confirm) deleteItem(i); }) ]))); })); }
 }
 
-// ============================================================================
-// SECTION 5: QR PAINTER
-// ============================================================================
+// qr painter
 class QrCodePainter extends CustomPainter { 
   final String data; 
   QrCodePainter({required this.data}); 
@@ -600,7 +552,6 @@ class QrCodePainter extends CustomPainter {
   @override void paint(Canvas c, Size s) { 
     c.drawRect(Rect.fromLTWH(0, 0, s.width, s.height), Paint()..color = Colors.white);
 
-    
     final qr = QrCode(15, QrErrorCorrectLevel.L)..addData(data); 
     final img = QrImage(qr); 
     final p = Paint()..style = PaintingStyle.fill..color = Colors.black; 
