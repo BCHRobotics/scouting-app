@@ -36,6 +36,7 @@ class MatchRecord {
   bool disabledTipped;
   bool telePenalty;
   String teleNotes;
+  int teleL; // <-- ADDED BACK IN: Teleop Climb Level
   
   // ratings (1-5)
   double rateShoot;
@@ -58,7 +59,7 @@ class MatchRecord {
     required this.teleShootCount, required this.teleShootTime,
     required this.telePassCount, required this.telePassTime,
     
-    required this.climbPos, required this.disabledTipped, required this.telePenalty, required this.teleNotes,
+    required this.climbPos, required this.disabledTipped, required this.telePenalty, required this.teleNotes, required this.teleL,
     
     required this.rateShoot, required this.rateFeed, required this.rateDef, required this.rateContrib, required this.ratePen,
   });
@@ -77,7 +78,7 @@ class MatchRecord {
       'teleShootCount': teleShootCount, 'teleShootTime': teleShootTime,
       'telePassCount': telePassCount, 'telePassTime': telePassTime,
       
-      'climbPos': climbPos, 'disabledTipped': disabledTipped, 'telePenalty': telePenalty, 'teleNotes': teleNotes,
+      'climbPos': climbPos, 'disabledTipped': disabledTipped, 'telePenalty': telePenalty, 'teleNotes': teleNotes, 'teleL': teleL,
       
       'rateShoot': rateShoot, 'rateFeed': rateFeed, 'rateDef': rateDef, 'rateContrib': rateContrib, 'ratePen': ratePen,
     };
@@ -97,7 +98,7 @@ class MatchRecord {
       teleShootCount: json['teleShootCount'] ?? 0, teleShootTime: (json['teleShootTime'] ?? 0.0).toDouble(),
       telePassCount: json['telePassCount'] ?? 0, telePassTime: (json['telePassTime'] ?? 0.0).toDouble(),
       
-      climbPos: json['climbPos'] ?? "", disabledTipped: json['disabledTipped'] ?? false, telePenalty: json['telePenalty'] ?? false, teleNotes: json['teleNotes'] ?? "",
+      climbPos: json['climbPos'] ?? "", disabledTipped: json['disabledTipped'] ?? false, telePenalty: json['telePenalty'] ?? false, teleNotes: json['teleNotes'] ?? "", teleL: json['teleL'] ?? 0,
       
       rateShoot: (json['rateShoot'] ?? 1.0).toDouble(), rateFeed: (json['rateFeed'] ?? 1.0).toDouble(), 
       rateDef: (json['rateDef'] ?? 1.0).toDouble(), rateContrib: (json['rateContrib'] ?? 1.0).toDouble(), ratePen: (json['ratePen'] ?? 1.0).toDouble(),
@@ -118,7 +119,7 @@ class MatchRecord {
            "$autoPassCount\t${autoPassTime.toStringAsFixed(1)}\t$aPen\t$aCon\t$autoL\t$cleanAuto\t"
            "$teleDefCount\t${teleDefTime.toStringAsFixed(1)}\t$teleColCount\t${teleColTime.toStringAsFixed(1)}\t"
            "$teleShootCount\t${teleShootTime.toStringAsFixed(1)}\t$telePassCount\t${telePassTime.toStringAsFixed(1)}\t"
-           "$climbPos\t$tDis\t$tPen\t${rateShoot.toInt()}\t${rateFeed.toInt()}\t${rateDef.toInt()}\t${rateContrib.toInt()}\t${ratePen.toInt()}\t$cleanTele";
+           "$climbPos\t$tDis\t$tPen\t$teleL\t${rateShoot.toInt()}\t${rateFeed.toInt()}\t${rateDef.toInt()}\t${rateContrib.toInt()}\t${ratePen.toInt()}\t$cleanTele";
   }
 }
 
