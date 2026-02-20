@@ -114,8 +114,9 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   final autoNoteCtrl = TextEditingController();
   final teleNoteCtrl = TextEditingController();
 
-  // auto variables
-  String? startPos; 
+  // auto variables (NOW SEPARATED)
+  String? autoStartPos; 
+  String? autoClimbPos; 
   int preload = 0;
   int autoScoreCount = 0;
   double autoScoreTime = 0.0;
@@ -131,13 +132,14 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   bool autoContrib = false;
   int autoL = 0;
 
-  // teleop variables
+  // teleop variables (NOW SEPARATED)
+  String? teleStartPos;
+  String? teleClimbPos;
   int teleDefCount = 0; double teleDefTime = 0.0; double _currHoldDef = 0.0; Timer? _defTimer;
   int teleColCount = 0; double teleColTime = 0.0; double _currHoldCol = 0.0; Timer? _colTimer;
   int teleShootCount = 0; double teleShootTime = 0.0; double _currHoldShoot = 0.0; Timer? _shootTimer;
   int telePassCount = 0; double telePassTime = 0.0; double _currHoldPassT = 0.0; Timer? _passTimerT;
   
-  String? climbPos;
   bool disabledTipped = false;
   bool telePenalty = false;
   int teleL = 0;
@@ -189,18 +191,20 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           teleNoteCtrl.text = r.teleNotes;
           if (r.alliance.isNotEmpty) alliance = r.alliance;
           
-          startPos = r.startPos.isEmpty ? null : r.startPos;
+          autoStartPos = r.autoStartPos.isEmpty ? null : r.autoStartPos;
+          autoClimbPos = r.autoClimbPos.isEmpty ? null : r.autoClimbPos;
           preload = r.preload;
           autoScoreCount = r.autoScoreCount; autoScoreTime = r.autoScoreTime;
           autoPassCount = r.autoPassCount; autoPassTime = r.autoPassTime;
           autoPenalty = r.autoPenalty; autoContrib = r.autoContrib; autoL = r.autoL;
 
+          teleStartPos = r.teleStartPos.isEmpty ? null : r.teleStartPos;
+          teleClimbPos = r.teleClimbPos.isEmpty ? null : r.teleClimbPos;
           teleDefCount = r.teleDefCount; teleDefTime = r.teleDefTime;
           teleColCount = r.teleColCount; teleColTime = r.teleColTime;
           teleShootCount = r.teleShootCount; teleShootTime = r.teleShootTime;
           telePassCount = r.telePassCount; telePassTime = r.telePassTime;
           
-          climbPos = r.climbPos.isEmpty ? null : r.climbPos;
           disabledTipped = r.disabledTipped;
           telePenalty = r.telePenalty;
           teleL = r.teleL;
@@ -217,16 +221,17 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   void _saveDraft() async {
     MatchRecord r = MatchRecord(
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance ?? "", timestamp: "",
-      startPos: startPos ?? "", preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime,
+      autoStartPos: autoStartPos ?? "", autoClimbPos: autoClimbPos ?? "", preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime,
       autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL,
       autoNotes: autoNoteCtrl.text,
       
+      teleStartPos: teleStartPos ?? "", teleClimbPos: teleClimbPos ?? "",
       teleDefCount: teleDefCount, teleDefTime: teleDefTime,
       teleColCount: teleColCount, teleColTime: teleColTime,
       teleShootCount: teleShootCount, teleShootTime: teleShootTime,
       telePassCount: telePassCount, telePassTime: telePassTime,
       
-      climbPos: climbPos ?? "", disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text, teleL: teleL,
+      disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text, teleL: teleL,
       
       rateShoot: rateShoot, rateFeed: rateFeed, rateDef: rateDef, rateContrib: rateContrib, ratePen: ratePen,
     );
@@ -250,14 +255,18 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   void saveMatch() async {
     if (alliance == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Please Select Alliance!"), backgroundColor: Colors.red)); return; }
     if (matchCtrl.text.isEmpty || teamCtrl.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Enter Match & Team #!"), backgroundColor: Colors.red)); return; }
-    if (startPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select an Auto Start Position!"), backgroundColor: Colors.red)); return; }
-    if (climbPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select a Teleop Climb Position!"), backgroundColor: Colors.red)); return; }
+    
+    // Check all 4 new position variables
+    if (autoStartPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Auto Start Position!"), backgroundColor: Colors.red)); return; }
+    if (autoClimbPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Auto Climb Position!"), backgroundColor: Colors.red)); return; }
+    if (teleStartPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Teleop Start Position!"), backgroundColor: Colors.red)); return; }
+    if (teleClimbPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Teleop Climb Position!"), backgroundColor: Colors.red)); return; }
     
     MatchRecord r = MatchRecord(
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance!, timestamp: DateTime.now().toString(),
-      startPos: startPos!, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime, autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL, autoNotes: autoNoteCtrl.text,
-      teleDefCount: teleDefCount, teleDefTime: teleDefTime, teleColCount: teleColCount, teleColTime: teleColTime, teleShootCount: teleShootCount, teleShootTime: teleShootTime, telePassCount: telePassCount, telePassTime: telePassTime,
-      climbPos: climbPos!, disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text, teleL: teleL,
+      autoStartPos: autoStartPos!, autoClimbPos: autoClimbPos!, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime, autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL, autoNotes: autoNoteCtrl.text,
+      teleStartPos: teleStartPos!, teleClimbPos: teleClimbPos!, teleDefCount: teleDefCount, teleDefTime: teleDefTime, teleColCount: teleColCount, teleColTime: teleColTime, teleShootCount: teleShootCount, teleShootTime: teleShootTime, telePassCount: telePassCount, telePassTime: telePassTime,
+      disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text, teleL: teleL,
       rateShoot: rateShoot, rateFeed: rateFeed, rateDef: rateDef, rateContrib: rateContrib, ratePen: ratePen,
     );
     
@@ -288,7 +297,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           }),
           title: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => setState((){ pageIdx = (pageIdx - 1 + pages.length) % pages.length; })),
-            // top level toggle - visible dynamically depending on page
+            // top level toggle
             if(pageIdx < 2) GestureDetector(
               onTap: () { setState(() { pageIdx==0 ? autoL=(autoL+1)%4 : teleL=(teleL+1)%4; _saveDraft(); }); },
               child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(12)), child: Text("Lvl ${pageIdx==0 ? autoL : teleL}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))
@@ -321,13 +330,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         
-        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: startPos == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
-          Text(startPos == null ? "Select Start Position!" : "Start Position", style: TextStyle(color: startPos == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
-          Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
-            onTap: ()=>setState((){ startPos = p; _saveDraft(); }),
-            child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: startPos==p ? Colors.amber[700] : Colors.grey[800], borderRadius: BorderRadius.circular(8)), child: Center(child: Text(p, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))))
-          ))).toList()),
-        ])),
+        _buildPositionSelector("Auto Start Position", autoStartPos, (v) => setState(() { autoStartPos = v; _saveDraft(); })),
         const SizedBox(height: 12),
 
         Container(
@@ -361,7 +364,11 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
             (_) => _endTimer(_passTimer, _currHoldPass, (c, t) => setState(() { autoPassCount += c; autoPassTime += t; _currHoldPass = 0.0; }))
           )
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
+
+        // Added auto climb position
+        _buildPositionSelector("Auto Climb Position", autoClimbPos, (v) => setState(() { autoClimbPos = v; _saveDraft(); })),
+        const SizedBox(height: 16),
 
         Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
           _largeCheckbox("Penalty", autoPenalty, Colors.redAccent, (v)=>setState((){autoPenalty=v; _saveDraft();})),
@@ -374,19 +381,17 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     );
   }
 
-  // teleop view layout - fixed for all phone sizes and pixel overflows
+  // teleop view layout
   Widget _buildTeleView() {
     final screenHeight = MediaQuery.of(context).size.height;
     
-    // 18% of screen height per button. 4 buttons = 72% total screen height used. 
-    // This perfectly fills the empty space before forcing the user to scroll to see the rest.
+    // 18% of screen height per button. 4 buttons = 72% total screen height used.
     final btnHeight = screenHeight * 0.18;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         
-        // vertically stacked dynamic hold timers (no pixel overflows!)
         SizedBox(height: btnHeight, child: _holdTimerBtn("DEFENSE", _currHoldDef, teleDefCount, const Color(0xFFD97706), 
           (_) => _startTimer((v) => setState(() => _currHoldDef += v), _defTimer, (t) => _defTimer = t),
           (_) => _endTimer(_defTimer, _currHoldDef, (c, t) => setState(() { teleDefCount += c; teleDefTime += t; _currHoldDef = 0.0; })))),
@@ -407,17 +412,13 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           (_) => _endTimer(_passTimerT, _currHoldPassT, (c, t) => setState(() { telePassCount += c; telePassTime += t; _currHoldPassT = 0.0; })))),
         const SizedBox(height: 16),
 
-        // climb position selector (pushed exactly below the fold)
-        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: climbPos == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
-          Text(climbPos == null ? "Select Climb Position!" : "Climb Position", style: TextStyle(color: climbPos == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
-          Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
-            onTap: ()=>setState((){ climbPos = p; _saveDraft(); }),
-            child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: climbPos==p ? Colors.blueAccent : Colors.grey[800], borderRadius: BorderRadius.circular(8)), child: Center(child: Text(p, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))))
-          ))).toList()),
-        ])),
+        _buildPositionSelector("Teleop Climb Position", teleClimbPos, (v) => setState(() { teleClimbPos = v; _saveDraft(); })),
         const SizedBox(height: 16),
 
-        // checkboxes
+        // Added teleop start position
+        _buildPositionSelector("Teleop Start Position", teleStartPos, (v) => setState(() { teleStartPos = v; _saveDraft(); })),
+        const SizedBox(height: 16),
+
         Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
           _largeCheckbox("Disabled/Tipped", disabledTipped, Colors.orangeAccent, (v)=>setState((){disabledTipped=v; _saveDraft();})),
           const SizedBox(height: 15),
@@ -425,7 +426,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ])),
         const SizedBox(height: 16),
 
-        // ratings sliders
         const Text("Qualitative Ratings", textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         _ratingSlider("Shooter Accuracy", rateShoot, (v)=>setState((){rateShoot=v; _saveDraft();})),
@@ -465,7 +465,18 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // reusable ui components
+  // reusable component for the left/center/right selectors
+  Widget _buildPositionSelector(String title, String? currentValue, Function(String) onSelect) {
+    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: currentValue == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
+      Text(currentValue == null ? "Select $title!" : title, style: TextStyle(color: currentValue == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
+      Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
+        onTap: () => onSelect(p),
+        child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: currentValue==p ? Colors.blueAccent : Colors.grey[800], borderRadius: BorderRadius.circular(8)), child: Center(child: Text(p, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))))
+      ))).toList()),
+    ]));
+  }
+
+  // basic ui bits
   Widget _btn(String l, Color c, VoidCallback cb, {bool isBig=false}) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: cb, child: Text(l, style: TextStyle(color: Colors.white, fontSize: isBig?28:16, fontWeight: FontWeight.bold)));
   Widget _preloadBtn(String l, Color c, VoidCallback cb) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(0)), onPressed: cb, child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold))));
   Widget _allianceBtn(String l, Color c) => Expanded(child: GestureDetector(onTap: () { setState(()=>alliance=l); _saveDraft(); }, child: Container(height: 50, decoration: BoxDecoration(color: alliance==l?c:AppColors.card, borderRadius: BorderRadius.circular(8), border: alliance==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l.toUpperCase(), style: TextStyle(color: alliance==l?Colors.white:c, fontWeight: FontWeight.bold))))));

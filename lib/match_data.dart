@@ -9,8 +9,11 @@ class MatchRecord {
   String alliance; 
   String timestamp;
   
+  // separate auto positions
+  String autoStartPos; 
+  String autoClimbPos;
+
   // auto data
-  String startPos; 
   int preload;
   int autoScoreCount;
   double autoScoreTime;
@@ -20,6 +23,10 @@ class MatchRecord {
   bool autoContrib;
   int autoL; 
   String autoNotes;
+  
+  // separate teleop positions
+  String teleStartPos;
+  String teleClimbPos; 
   
   // teleop data (hold timers)
   int teleDefCount;
@@ -32,11 +39,10 @@ class MatchRecord {
   double telePassTime;
   
   // teleop specifics
-  String climbPos; 
   bool disabledTipped;
   bool telePenalty;
   String teleNotes;
-  int teleL; // <-- ADDED BACK IN: Teleop Climb Level
+  int teleL; 
   
   // ratings (1-5)
   double rateShoot;
@@ -48,18 +54,19 @@ class MatchRecord {
   MatchRecord({
     required this.matchNum, required this.team, required this.alliance, required this.timestamp,
     
-    required this.startPos, required this.preload,
+    required this.autoStartPos, required this.autoClimbPos, required this.preload,
     required this.autoScoreCount, required this.autoScoreTime,
     required this.autoPassCount, required this.autoPassTime,
     required this.autoPenalty, required this.autoContrib, required this.autoL,
     required this.autoNotes,
     
+    required this.teleStartPos, required this.teleClimbPos,
     required this.teleDefCount, required this.teleDefTime,
     required this.teleColCount, required this.teleColTime,
     required this.teleShootCount, required this.teleShootTime,
     required this.telePassCount, required this.telePassTime,
     
-    required this.climbPos, required this.disabledTipped, required this.telePenalty, required this.teleNotes, required this.teleL,
+    required this.disabledTipped, required this.telePenalty, required this.teleNotes, required this.teleL,
     
     required this.rateShoot, required this.rateFeed, required this.rateDef, required this.rateContrib, required this.ratePen,
   });
@@ -67,18 +74,19 @@ class MatchRecord {
   Map<String, dynamic> toJson() {
     return {
       'matchNum': matchNum, 'team': team, 'alliance': alliance, 'timestamp': timestamp,
-      'startPos': startPos, 'preload': preload,
+      'autoStartPos': autoStartPos, 'autoClimbPos': autoClimbPos, 'preload': preload,
       'autoScoreCount': autoScoreCount, 'autoScoreTime': autoScoreTime,
       'autoPassCount': autoPassCount, 'autoPassTime': autoPassTime,
       'autoPenalty': autoPenalty, 'autoContrib': autoContrib, 'autoL': autoL,
       'autoNotes': autoNotes,
       
+      'teleStartPos': teleStartPos, 'teleClimbPos': teleClimbPos,
       'teleDefCount': teleDefCount, 'teleDefTime': teleDefTime,
       'teleColCount': teleColCount, 'teleColTime': teleColTime,
       'teleShootCount': teleShootCount, 'teleShootTime': teleShootTime,
       'telePassCount': telePassCount, 'telePassTime': telePassTime,
       
-      'climbPos': climbPos, 'disabledTipped': disabledTipped, 'telePenalty': telePenalty, 'teleNotes': teleNotes, 'teleL': teleL,
+      'disabledTipped': disabledTipped, 'telePenalty': telePenalty, 'teleNotes': teleNotes, 'teleL': teleL,
       
       'rateShoot': rateShoot, 'rateFeed': rateFeed, 'rateDef': rateDef, 'rateContrib': rateContrib, 'ratePen': ratePen,
     };
@@ -87,18 +95,20 @@ class MatchRecord {
   factory MatchRecord.fromJson(Map<String, dynamic> json) {
     return MatchRecord(
       matchNum: json['matchNum'] ?? "", team: json['team'] ?? "", alliance: json['alliance'] ?? "", timestamp: json['timestamp'] ?? "",
-      startPos: json['startPos'] ?? "", preload: json['preload'] ?? 0,
+      
+      autoStartPos: json['autoStartPos'] ?? "", autoClimbPos: json['autoClimbPos'] ?? "", preload: json['preload'] ?? 0,
       autoScoreCount: json['autoScoreCount'] ?? 0, autoScoreTime: (json['autoScoreTime'] ?? 0.0).toDouble(),
       autoPassCount: json['autoPassCount'] ?? 0, autoPassTime: (json['autoPassTime'] ?? 0.0).toDouble(),
       autoPenalty: json['autoPenalty'] ?? false, autoContrib: json['autoContrib'] ?? false, autoL: json['autoL'] ?? 0,
       autoNotes: json['autoNotes'] ?? "",
       
+      teleStartPos: json['teleStartPos'] ?? "", teleClimbPos: json['teleClimbPos'] ?? "",
       teleDefCount: json['teleDefCount'] ?? 0, teleDefTime: (json['teleDefTime'] ?? 0.0).toDouble(),
       teleColCount: json['teleColCount'] ?? 0, teleColTime: (json['teleColTime'] ?? 0.0).toDouble(),
       teleShootCount: json['teleShootCount'] ?? 0, teleShootTime: (json['teleShootTime'] ?? 0.0).toDouble(),
       telePassCount: json['telePassCount'] ?? 0, telePassTime: (json['telePassTime'] ?? 0.0).toDouble(),
       
-      climbPos: json['climbPos'] ?? "", disabledTipped: json['disabledTipped'] ?? false, telePenalty: json['telePenalty'] ?? false, teleNotes: json['teleNotes'] ?? "", teleL: json['teleL'] ?? 0,
+      disabledTipped: json['disabledTipped'] ?? false, telePenalty: json['telePenalty'] ?? false, teleNotes: json['teleNotes'] ?? "", teleL: json['teleL'] ?? 0,
       
       rateShoot: (json['rateShoot'] ?? 1.0).toDouble(), rateFeed: (json['rateFeed'] ?? 1.0).toDouble(), 
       rateDef: (json['rateDef'] ?? 1.0).toDouble(), rateContrib: (json['rateContrib'] ?? 1.0).toDouble(), ratePen: (json['ratePen'] ?? 1.0).toDouble(),
@@ -115,11 +125,11 @@ class MatchRecord {
     String cleanAuto = autoNotes.replaceAll('\n', ' ').replaceAll('\t', ' ');
     String cleanTele = teleNotes.replaceAll('\n', ' ').replaceAll('\t', ' ');
 
-    return "$matchNum\t$team\t$alliance\t$startPos\t$preload\t$autoScoreCount\t${autoScoreTime.toStringAsFixed(1)}\t"
+    return "$matchNum\t$team\t$alliance\t$autoStartPos\t$autoClimbPos\t$preload\t$autoScoreCount\t${autoScoreTime.toStringAsFixed(1)}\t"
            "$autoPassCount\t${autoPassTime.toStringAsFixed(1)}\t$aPen\t$aCon\t$autoL\t$cleanAuto\t"
-           "$teleDefCount\t${teleDefTime.toStringAsFixed(1)}\t$teleColCount\t${teleColTime.toStringAsFixed(1)}\t"
+           "$teleStartPos\t$teleClimbPos\t$teleDefCount\t${teleDefTime.toStringAsFixed(1)}\t$teleColCount\t${teleColTime.toStringAsFixed(1)}\t"
            "$teleShootCount\t${teleShootTime.toStringAsFixed(1)}\t$telePassCount\t${telePassTime.toStringAsFixed(1)}\t"
-           "$climbPos\t$tDis\t$tPen\t$teleL\t${rateShoot.toInt()}\t${rateFeed.toInt()}\t${rateDef.toInt()}\t${rateContrib.toInt()}\t${ratePen.toInt()}\t$cleanTele";
+           "$tDis\t$tPen\t$teleL\t${rateShoot.toInt()}\t${rateFeed.toInt()}\t${rateDef.toInt()}\t${rateContrib.toInt()}\t${ratePen.toInt()}\t$cleanTele";
   }
 }
 
