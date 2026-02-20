@@ -140,6 +140,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   String? climbPos;
   bool disabledTipped = false;
   bool telePenalty = false;
+  int teleL = 0;
 
   // rating sliders (1-5)
   double rateShoot = 1.0;
@@ -202,6 +203,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           climbPos = r.climbPos.isEmpty ? null : r.climbPos;
           disabledTipped = r.disabledTipped;
           telePenalty = r.telePenalty;
+          teleL = r.teleL;
           
           rateShoot = r.rateShoot; rateFeed = r.rateFeed; rateDef = r.rateDef;
           rateContrib = r.rateContrib; ratePen = r.ratePen;
@@ -224,7 +226,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
       teleShootCount: teleShootCount, teleShootTime: teleShootTime,
       telePassCount: telePassCount, telePassTime: telePassTime,
       
-      climbPos: climbPos ?? "", disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text,
+      climbPos: climbPos ?? "", disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text, teleL: teleL,
       
       rateShoot: rateShoot, rateFeed: rateFeed, rateDef: rateDef, rateContrib: rateContrib, ratePen: ratePen,
     );
@@ -255,7 +257,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance!, timestamp: DateTime.now().toString(),
       startPos: startPos!, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime, autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL, autoNotes: autoNoteCtrl.text,
       teleDefCount: teleDefCount, teleDefTime: teleDefTime, teleColCount: teleColCount, teleColTime: teleColTime, teleShootCount: teleShootCount, teleShootTime: teleShootTime, telePassCount: telePassCount, telePassTime: telePassTime,
-      climbPos: climbPos!, disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text, 
+      climbPos: climbPos!, disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text, teleL: teleL,
       rateShoot: rateShoot, rateFeed: rateFeed, rateDef: rateDef, rateContrib: rateContrib, ratePen: ratePen,
     );
     
@@ -286,10 +288,10 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           }),
           title: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => setState((){ pageIdx = (pageIdx - 1 + pages.length) % pages.length; })),
-            // level toggle is only visible on the auto page now since tele has climb level buttons
-            if(pageIdx == 0) GestureDetector(
-              onTap: () { setState(() { autoL=(autoL+1)%4; _saveDraft(); }); },
-              child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(12)), child: Text("Lvl $autoL", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))
+            // top level toggle - visible dynamically depending on page
+            if(pageIdx < 2) GestureDetector(
+              onTap: () { setState(() { pageIdx==0 ? autoL=(autoL+1)%4 : teleL=(teleL+1)%4; _saveDraft(); }); },
+              child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(12)), child: Text("Lvl ${pageIdx==0 ? autoL : teleL}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))
             ),
             IconButton(icon: const Icon(Icons.arrow_forward_ios, color: Colors.white), onPressed: () => setState((){ pageIdx = (pageIdx + 1) % pages.length; })),
           ]),
@@ -372,34 +374,40 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     );
   }
 
-  // teleop view layout (updated with vertical buttons and specific ratings)
+  // teleop view layout - fixed for all phone sizes and pixel overflows
   Widget _buildTeleView() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    // 18% of screen height per button. 4 buttons = 72% total screen height used. 
+    // This perfectly fills the empty space before forcing the user to scroll to see the rest.
+    final btnHeight = screenHeight * 0.18;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         
-        // vertical stacked hold timers (big and wide)
-        SizedBox(height: 130, child: _holdTimerBtn("DEFENSE", _currHoldDef, teleDefCount, const Color(0xFFD97706), 
+        // vertically stacked dynamic hold timers (no pixel overflows!)
+        SizedBox(height: btnHeight, child: _holdTimerBtn("DEFENSE", _currHoldDef, teleDefCount, const Color(0xFFD97706), 
           (_) => _startTimer((v) => setState(() => _currHoldDef += v), _defTimer, (t) => _defTimer = t),
           (_) => _endTimer(_defTimer, _currHoldDef, (c, t) => setState(() { teleDefCount += c; teleDefTime += t; _currHoldDef = 0.0; })))),
         const SizedBox(height: 12),
         
-        SizedBox(height: 130, child: _holdTimerBtn("COLLECTING", _currHoldCol, teleColCount, const Color(0xFF16A34A), 
+        SizedBox(height: btnHeight, child: _holdTimerBtn("COLLECTING", _currHoldCol, teleColCount, const Color(0xFF16A34A), 
           (_) => _startTimer((v) => setState(() => _currHoldCol += v), _colTimer, (t) => _colTimer = t),
           (_) => _endTimer(_colTimer, _currHoldCol, (c, t) => setState(() { teleColCount += c; teleColTime += t; _currHoldCol = 0.0; })))),
         const SizedBox(height: 12),
 
-        SizedBox(height: 130, child: _holdTimerBtn("SHOOTING", _currHoldShoot, teleShootCount, const Color(0xFFDC2626), 
+        SizedBox(height: btnHeight, child: _holdTimerBtn("SHOOTING", _currHoldShoot, teleShootCount, const Color(0xFFDC2626), 
           (_) => _startTimer((v) => setState(() => _currHoldShoot += v), _shootTimer, (t) => _shootTimer = t),
           (_) => _endTimer(_shootTimer, _currHoldShoot, (c, t) => setState(() { teleShootCount += c; teleShootTime += t; _currHoldShoot = 0.0; })))),
         const SizedBox(height: 12),
         
-        SizedBox(height: 130, child: _holdTimerBtn("PASSING", _currHoldPassT, telePassCount, const Color(0xFF2563EB), 
+        SizedBox(height: btnHeight, child: _holdTimerBtn("PASSING", _currHoldPassT, telePassCount, const Color(0xFF2563EB), 
           (_) => _startTimer((v) => setState(() => _currHoldPassT += v), _passTimerT, (t) => _passTimerT = t),
           (_) => _endTimer(_passTimerT, _currHoldPassT, (c, t) => setState(() { telePassCount += c; telePassTime += t; _currHoldPassT = 0.0; })))),
         const SizedBox(height: 16),
 
-        // climb position selector
+        // climb position selector (pushed exactly below the fold)
         Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: climbPos == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
           Text(climbPos == null ? "Select Climb Position!" : "Climb Position", style: TextStyle(color: climbPos == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
           Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
@@ -409,7 +417,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ])),
         const SizedBox(height: 16),
 
-        // penalty and tipped checkboxes
+        // checkboxes
         Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
           _largeCheckbox("Disabled/Tipped", disabledTipped, Colors.orangeAccent, (v)=>setState((){disabledTipped=v; _saveDraft();})),
           const SizedBox(height: 15),
@@ -417,7 +425,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ])),
         const SizedBox(height: 16),
 
-        // the 5 new rating sliders
+        // ratings sliders
         const Text("Qualitative Ratings", textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         _ratingSlider("Shooter Accuracy", rateShoot, (v)=>setState((){rateShoot=v; _saveDraft();})),
@@ -474,18 +482,18 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     );
   }
 
+  // fully responsive hold timer button (zero pixel overflows!)
   Widget _holdTimerBtn(String title, double currentHold, int count, Color c, Function(TapDownDetails) onDown, Function(dynamic) onUp) {
     bool isHolding = currentHold > 0;
     return GestureDetector(
       onTapDown: onDown, onTapUp: onUp, onTapCancel: () => onUp(null),
       child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         decoration: BoxDecoration(color: isHolding ? c.withOpacity(0.8) : AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: c, width: 4)),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text("HOLD FOR $title", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2.0)),
-          const SizedBox(height: 5),
-          FittedBox(fit: BoxFit.scaleDown, child: Text("${currentHold.toStringAsFixed(1)}s", style: TextStyle(color: isHolding ? Colors.white : Colors.white54, fontSize: 50, fontWeight: FontWeight.bold))),
-          const SizedBox(height: 5),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(8)), child: Text("Count: $count", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)))
+        child: Column(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+          FittedBox(fit: BoxFit.scaleDown, child: Text("HOLD FOR $title", style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.5))),
+          Expanded(child: FittedBox(fit: BoxFit.contain, child: Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text("${currentHold.toStringAsFixed(1)}s", style: TextStyle(color: isHolding ? Colors.white : Colors.white54, fontWeight: FontWeight.bold))))),
+          FittedBox(fit: BoxFit.scaleDown, child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(8)), child: Text("Count: $count", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))))
         ]),
       ),
     );
