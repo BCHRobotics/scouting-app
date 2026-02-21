@@ -110,7 +110,6 @@ class MatchRecord {
       
       disabledTipped: json['disabledTipped'] ?? false, telePenalty: json['telePenalty'] ?? false, teleNotes: json['teleNotes'] ?? "", teleL: json['teleL'] ?? 0,
       
-      // Default rateShoot to 0.0 instead of 1.0 since it's a percentage now
       rateShoot: (json['rateShoot'] ?? 0.0).toDouble(), rateFeed: (json['rateFeed'] ?? 1.0).toDouble(), 
       rateDef: (json['rateDef'] ?? 1.0).toDouble(), rateContrib: (json['rateContrib'] ?? 1.0).toDouble(), ratePen: (json['ratePen'] ?? 1.0).toDouble(),
     );
@@ -144,7 +143,7 @@ class PitRecord {
 
   Map<String, dynamic> toJson() => {'team': team, 'width': width, 'length': length, 'height': height, 'weight': weight, 'swerve': swerve, 'tank': tank, 'fuel': fuel, 'fuelPerSec': fuelPerSec, 'stability': stability, 'accuracy': accuracy, 'comments': comments, 'trench': trench, 'bump': bump, 'climb': climbLvl, 'role': role};
   
-  factory PitRecord.fromJson(Map<String, dynamic> json) => PitRecord(team: json['team'] ?? "", width: json['width'] ?? "", length: json['length'] ?? "", height: json['height'] ?? "", weight: json['weight'] ?? "", swerve: json['swerve'] ?? false, tank: json['tank'] ?? false, fuel: json['fuel'] ?? "", fuelPerSec: json['fuelPerSec'] ?? "", stability: (json['stability'] ?? 1.0).toDouble(), accuracy: (json['accuracy'] ?? 0.0).toDouble(), comments: json['comments'] ?? "", trench: json['trench'] ?? false, bump: json['bump'] ?? false, climbLvl: json['climb'] ?? "", role: json['role'] ?? "");
+  factory PitRecord.fromJson(Map<String, dynamic> json) => PitRecord(team: json['team'] ?? "", width: json['width'] ?? "", length: json['length'] ?? "", height: json['height'] ?? "", weight: json['weight'] ?? "", swerve: json['swerve'] ?? false, tank: json['tank'] ?? false, fuel: json['fuel'] ?? "", fuelPerSec: json['fuelPerSec'] ?? "", stability: (json['stability'] ?? 1.0).toDouble(), accuracy: (json['accuracy'] ?? 0.0).toDouble(), comments: json['comments'] ?? "", trench: json['trench'] ?? false, bump: json['bump'] ?? false, climbLvl: json['climb'] ?? "None", role: json['role'] ?? "");
   
   String toQRString() {
     // combine drivetrain into a single variable
@@ -159,8 +158,9 @@ class PitRecord {
     else if (bump) trenchBump = "Bump";
     
     String cleanComments = comments.replaceAll('\n', ' ').replaceAll('\t', ' ');
+    String finalClimb = climbLvl.isEmpty ? "None" : climbLvl;
     
-    
-    return "$team\t$width\t$length\t$height\t$weight\t$drivetrain\t$fuel\t$fuelPerSec\t${stability.toInt()}\t${accuracy.toInt()}\t$trenchBump\t$climbLvl\t$role\t$cleanComments";
+    // outputs to 2 single columns now instead of 4 separate true/false columns
+    return "$team\t$width\t$length\t$height\t$weight\t$drivetrain\t$fuel\t$fuelPerSec\t${stability.toInt()}\t${accuracy.toInt()}\t$trenchBump\t$finalClimb\t$role\t$cleanComments";
   }
 }
