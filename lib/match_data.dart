@@ -142,6 +142,24 @@ class PitRecord {
   PitRecord({required this.team, required this.width, required this.length, required this.height, required this.weight, required this.swerve, required this.tank, required this.fuel, required this.fuelPerSec, required this.stability, required this.accuracy, required this.comments, required this.trench, required this.bump, required this.climbLvl, required this.role});
 
   Map<String, dynamic> toJson() => {'team': team, 'width': width, 'length': length, 'height': height, 'weight': weight, 'swerve': swerve, 'tank': tank, 'fuel': fuel, 'fuelPerSec': fuelPerSec, 'stability': stability, 'accuracy': accuracy, 'comments': comments, 'trench': trench, 'bump': bump, 'climb': climbLvl, 'role': role};
+  
   factory PitRecord.fromJson(Map<String, dynamic> json) => PitRecord(team: json['team'] ?? "", width: json['width'] ?? "", length: json['length'] ?? "", height: json['height'] ?? "", weight: json['weight'] ?? "", swerve: json['swerve'] ?? false, tank: json['tank'] ?? false, fuel: json['fuel'] ?? "", fuelPerSec: json['fuelPerSec'] ?? "", stability: (json['stability'] ?? 1.0).toDouble(), accuracy: (json['accuracy'] ?? 0.0).toDouble(), comments: json['comments'] ?? "", trench: json['trench'] ?? false, bump: json['bump'] ?? false, climbLvl: json['climb'] ?? "", role: json['role'] ?? "");
-  String toQRString() => "$team\t$width\t$length\t$height\t$weight\t${swerve?1:0}\t${tank?1:0}\t$fuel\t$fuelPerSec\t${stability.toInt()}\t${accuracy.toInt()}\t${trench?1:0}\t${bump?1:0}\t$climbLvl\t$role\t${comments.replaceAll('\n', ' ').replaceAll('\t', ' ')}";
+  
+  String toQRString() {
+    // combine drivetrain into a single variable
+    String drivetrain = "Other";
+    if (swerve) drivetrain = "Swerve";
+    else if (tank) drivetrain = "Tank";
+    
+    // combine trench/bump into a single variable
+    String trenchBump = "None";
+    if (trench && bump) trenchBump = "Both";
+    else if (trench) trenchBump = "Trench";
+    else if (bump) trenchBump = "Bump";
+    
+    String cleanComments = comments.replaceAll('\n', ' ').replaceAll('\t', ' ');
+    
+    
+    return "$team\t$width\t$length\t$height\t$weight\t$drivetrain\t$fuel\t$fuelPerSec\t${stability.toInt()}\t${accuracy.toInt()}\t$trenchBump\t$climbLvl\t$role\t$cleanComments";
+  }
 }
