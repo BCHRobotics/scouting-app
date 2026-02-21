@@ -145,7 +145,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   int teleL = 0;
 
   // rating sliders
-  double rateShoot = 1.0;
+  double rateShoot = 0.0; // Starts at 0%
   double rateFeed = 1.0;
   double rateDef = 1.0;
   double rateContrib = 1.0;
@@ -389,7 +389,11 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
         const Text("Qualitative Ratings", textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        _ratingSlider("Shooter Accuracy", rateShoot, (v)=>setState((){rateShoot=v; _saveDraft();})),
+        
+        // Custom 0-100 percentage slider (20 divisions = increments of 5)
+        _ratingSlider("Shooter Accuracy", rateShoot, (v)=>setState((){rateShoot=v; _saveDraft();}), min: 0, max: 100, divisions: 20, suffix: "%"),
+        
+        // Standard 1-5 sliders
         _ratingSlider("Feeding Ability", rateFeed, (v)=>setState((){rateFeed=v; _saveDraft();})),
         _ratingSlider("Defense", rateDef, (v)=>setState((){rateDef=v; _saveDraft();})),
         _ratingSlider("Contribution", rateContrib, (v)=>setState((){rateContrib=v; _saveDraft();})),
@@ -465,7 +469,17 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     );
   }
 
-  Widget _ratingSlider(String l, double v, Function(double) f) => Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: const TextStyle(color: Colors.white, fontSize: 18)), Text(v.toInt().toString(), style: const TextStyle(color: Colors.blue, fontSize: 24))]), Slider(value: v, min: 1, max: 5, divisions: 4, onChanged: f)]));
+  // Upgraded dynamic rating slider that supports custom ranges and suffixes (like '%')
+  Widget _ratingSlider(String l, double v, Function(double) f, {double min = 1, double max = 5, int divisions = 4, String suffix = ""}) => Container(
+    margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), 
+    child: Column(children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(l, style: const TextStyle(color: Colors.white, fontSize: 18)), 
+        Text("${v.toInt()}$suffix", style: const TextStyle(color: Colors.blue, fontSize: 24))
+      ]), 
+      Slider(value: v, min: min, max: max, divisions: divisions, onChanged: f)
+    ])
+  );
 }
 
 // pit scouting screen
@@ -495,7 +509,12 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
           Container(padding: const EdgeInsets.all(16), color: Colors.red[900], child: Row(children: [ IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () async { if(await _confirmExit(context, "Exit Pit Scouting?", "You will LOSE unsaved data.") && mounted) Navigator.pop(context); }), Expanded(child: Center(child: SizedBox(width: 150, child: TextField(controller: teamCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold), decoration: const InputDecoration(hintText: "Team #", hintStyle: TextStyle(color: Colors.white60), border: InputBorder.none))))), const SizedBox(width: 40) ])),
           Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(children: [
             _card("Dimensions", [ Row(children: [Expanded(child: _labeledInput(wCtrl, "Width (in)")), const SizedBox(width: 12), Expanded(child: _labeledInput(lCtrl, "Length (in)")), const SizedBox(width: 12), Expanded(child: _labeledInput(hCtrl, "Height (in)"))]), const SizedBox(height: 12), Row(children: [Expanded(child: _labeledInput(weightCtrl, "Weight (lbs)")), const Spacer(flex: 2)]) ]), const SizedBox(height: 16),
-            _card("Features", [ Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Swerve", isSwerve, Colors.greenAccent, ()=>setState((){isSwerve=!isSwerve;if(isSwerve)isTank=false;})), _customToggle("Tank", isTank, Colors.redAccent, ()=>setState((){isTank=!isTank;if(isTank)isSwerve=false;}))]), const SizedBox(height: 16), Row(children: [Expanded(child: _labeledInput(fuelCtrl, "Fuel Capacity")), const SizedBox(width: 12), Expanded(child: _labeledInput(fpsCtrl, "Fuel / Sec"))]), const SizedBox(height: 16), Text("Stability: ${stability.toInt()}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: stability, min: 1, max: 5, divisions: 4, activeColor: Colors.redAccent, label: "${stability.toInt()}", onChanged: (v)=>setState(()=>stability=v)), const SizedBox(height: 16), Text("Accuracy: ${accuracy.toInt()}%", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: accuracy, min: 0, max: 100, divisions: 10, activeColor: Colors.blueAccent, label: "${accuracy.toInt()}%", onChanged: (v)=>setState(()=>accuracy=v)), const SizedBox(height: 16), TextField(controller: commentCtrl, maxLines: 4, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: "Auto Comments", hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFF4B5563), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)))) ]), const SizedBox(height: 16),
+            _card("Features", [ Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Swerve", isSwerve, Colors.greenAccent, ()=>setState((){isSwerve=!isSwerve;if(isSwerve)isTank=false;})), _customToggle("Tank", isTank, Colors.redAccent, ()=>setState((){isTank=!isTank;if(isTank)isSwerve=false;}))]), const SizedBox(height: 16), Row(children: [Expanded(child: _labeledInput(fuelCtrl, "Fuel Capacity")), const SizedBox(width: 12), Expanded(child: _labeledInput(fpsCtrl, "Fuel / Sec"))]), const SizedBox(height: 16), Text("Stability: ${stability.toInt()}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: stability, min: 1, max: 5, divisions: 4, activeColor: Colors.redAccent, label: "${stability.toInt()}", onChanged: (v)=>setState(()=>stability=v)), const SizedBox(height: 16), 
+            
+            // Pit accuracy divisions changed to 20 so it moves in 5% increments
+            Text("Accuracy: ${accuracy.toInt()}%", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: accuracy, min: 0, max: 100, divisions: 20, activeColor: Colors.blueAccent, label: "${accuracy.toInt()}%", onChanged: (v)=>setState(()=>accuracy=v)), 
+            
+            const SizedBox(height: 16), TextField(controller: commentCtrl, maxLines: 4, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: "Auto Comments", hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFF4B5563), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)))) ]), const SizedBox(height: 16),
             _card("Capabilities", [ Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Trench", isTrench, Colors.greenAccent, ()=>setState(()=>isTrench=!isTrench)), _customToggle("Bump", isBump, Colors.redAccent, ()=>setState(()=>isBump=!isBump))]), const SizedBox(height: 16), const Text("Climb Level", style: TextStyle(color: Colors.white, fontSize: 16)), const SizedBox(height: 8), Row(children: ["1","2","3"].map((l)=>Expanded(child: GestureDetector(onTap: ()=>setState(()=>climbLvl=l), child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), height: 40, decoration: BoxDecoration(color: climbLvl==l?Colors.orange:Colors.grey[700], borderRadius: BorderRadius.circular(4)), child: Center(child: Text(l, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))))).toList()) ]), const SizedBox(height: 16),
             _card("Preferred Role", [Row(children: [_roleBtn("Score", Colors.blue), const SizedBox(width: 8), _roleBtn("Pass", Colors.purpleAccent), const SizedBox(width: 8), _roleBtn("Def", Colors.amber)])]), const SizedBox(height: 30),
             ElevatedButton(onPressed: savePit, style: ElevatedButton.styleFrom(backgroundColor: Colors.green, minimumSize: const Size(double.infinity, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), child: const Text("SAVE DATA", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white))), const SizedBox(height: 50),
@@ -597,47 +616,50 @@ class _HistoryScreenState extends State<HistoryScreen> {
           )
         ],
       ), 
-      body: history.isEmpty 
-        ? Center(child: Text(viewBin ? "Recycle Bin is Empty" : "No Records Found", style: const TextStyle(color: Colors.white, fontSize: 20))) 
-        : ListView.builder(
-          itemCount: history.length, 
-          itemBuilder: (ctx, i) { 
-            final rec = history[i]; 
-            String title = widget.isPit ? "Team ${rec.team}" : "Match ${rec.matchNum} | Team ${rec.team}"; 
-            String sub = widget.isPit ? "Role: ${rec.role}" : "${rec.alliance} | ${rec.timestamp.split(' ')[0]}"; 
-            
-            return Card(
-              color: AppColors.card, 
-              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), 
-              child: ListTile(
-                title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), 
-                subtitle: Text(sub, style: const TextStyle(color: Colors.grey)), 
-                trailing: Row(mainAxisSize: MainAxisSize.min, children: [ 
-                  
-                  // only show the qr code button if it's an active record
-                  if (!viewBin) 
-                    IconButton(icon: const Icon(Icons.qr_code, color: Colors.white), onPressed: () => showQR(rec)), 
-                  
-                  // only show the restore button if we are looking inside the recycle bin
-                  if (viewBin) 
-                    IconButton(icon: const Icon(Icons.restore, color: Colors.green), onPressed: () async { 
-                      bool confirm = await _confirmExit(context, "Restore Record?", "This will move the record back to active history.", yesLabel: "RESTORE"); 
-                      if (confirm) restoreItem(i); 
-                    }), 
-                  
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red), 
-                    onPressed: () async { 
-                      String diagTitle = viewBin ? "Permanent Delete?" : "Move to Bin?";
-                      String diagMsg = viewBin ? "This will erase the record forever." : "You can restore this later from the recycle bin.";
-                      bool confirm = await _confirmExit(context, diagTitle, diagMsg, yesLabel: "DELETE"); 
-                      if (confirm) deleteItem(i); 
-                    }
-                  ) 
-                ])
-              )
-            ); 
-          })
+      // Wrapping the body in SafeArea to protect the bottom navigation bar!
+      body: SafeArea(
+        child: history.isEmpty 
+          ? Center(child: Text(viewBin ? "Recycle Bin is Empty" : "No Records Found", style: const TextStyle(color: Colors.white, fontSize: 20))) 
+          : ListView.builder(
+            itemCount: history.length, 
+            itemBuilder: (ctx, i) { 
+              final rec = history[i]; 
+              String title = widget.isPit ? "Team ${rec.team}" : "Match ${rec.matchNum} | Team ${rec.team}"; 
+              String sub = widget.isPit ? "Role: ${rec.role}" : "${rec.alliance} | ${rec.timestamp.split(' ')[0]}"; 
+              
+              return Card(
+                color: AppColors.card, 
+                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), 
+                child: ListTile(
+                  title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), 
+                  subtitle: Text(sub, style: const TextStyle(color: Colors.grey)), 
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [ 
+                    
+                    // only show the qr code button if it's an active record
+                    if (!viewBin) 
+                      IconButton(icon: const Icon(Icons.qr_code, color: Colors.white), onPressed: () => showQR(rec)), 
+                    
+                    // only show the restore button if we are looking inside the recycle bin
+                    if (viewBin) 
+                      IconButton(icon: const Icon(Icons.restore, color: Colors.green), onPressed: () async { 
+                        bool confirm = await _confirmExit(context, "Restore Record?", "This will move the record back to active history.", yesLabel: "RESTORE"); 
+                        if (confirm) restoreItem(i); 
+                      }), 
+                    
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red), 
+                      onPressed: () async { 
+                        String diagTitle = viewBin ? "Permanent Delete?" : "Move to Bin?";
+                        String diagMsg = viewBin ? "This will erase the record forever." : "You can restore this later from the recycle bin.";
+                        bool confirm = await _confirmExit(context, diagTitle, diagMsg, yesLabel: "DELETE"); 
+                        if (confirm) deleteItem(i); 
+                      }
+                    ) 
+                  ])
+                )
+              ); 
+            }),
+      )
     ); 
   }
 }

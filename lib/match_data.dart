@@ -44,12 +44,12 @@ class MatchRecord {
   String teleNotes;
   int teleL; 
   
-  // ratings (1-5)
-  double rateShoot;
-  double rateFeed;
-  double rateDef;
-  double rateContrib;
-  double ratePen;
+  // ratings
+  double rateShoot; // now 0-100
+  double rateFeed;  // 1-5
+  double rateDef;   // 1-5
+  double rateContrib; // 1-5
+  double ratePen;   // 1-5
 
   MatchRecord({
     required this.matchNum, required this.team, required this.alliance, required this.timestamp,
@@ -110,7 +110,8 @@ class MatchRecord {
       
       disabledTipped: json['disabledTipped'] ?? false, telePenalty: json['telePenalty'] ?? false, teleNotes: json['teleNotes'] ?? "", teleL: json['teleL'] ?? 0,
       
-      rateShoot: (json['rateShoot'] ?? 1.0).toDouble(), rateFeed: (json['rateFeed'] ?? 1.0).toDouble(), 
+      // Default rateShoot to 0.0 instead of 1.0 since it's a percentage now
+      rateShoot: (json['rateShoot'] ?? 0.0).toDouble(), rateFeed: (json['rateFeed'] ?? 1.0).toDouble(), 
       rateDef: (json['rateDef'] ?? 1.0).toDouble(), rateContrib: (json['rateContrib'] ?? 1.0).toDouble(), ratePen: (json['ratePen'] ?? 1.0).toDouble(),
     );
   }
@@ -159,7 +160,7 @@ class PitRecord {
     
     String cleanComments = comments.replaceAll('\n', ' ').replaceAll('\t', ' ');
     
-    
+    // outputs to 2 single columns now instead of 4 separate true/false columns
     return "$team\t$width\t$length\t$height\t$weight\t$drivetrain\t$fuel\t$fuelPerSec\t${stability.toInt()}\t${accuracy.toInt()}\t$trenchBump\t$climbLvl\t$role\t$cleanComments";
   }
 }
