@@ -160,7 +160,7 @@ class PitRecord {
     
     String cleanComments = comments.replaceAll('\n', ' ').replaceAll('\t', ' ');
     
-    // outputs to 2 single columns now instead of 4 separate true/false columns
+    
     return "$team\t$width\t$length\t$height\t$weight\t$drivetrain\t$fuel\t$fuelPerSec\t${stability.toInt()}\t${accuracy.toInt()}\t$trenchBump\t$climbLvl\t$role\t$cleanComments";
   }
 }
