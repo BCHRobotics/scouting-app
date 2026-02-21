@@ -114,7 +114,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   final autoNoteCtrl = TextEditingController();
   final teleNoteCtrl = TextEditingController();
 
-  // auto variables (NOW SEPARATED)
+  // auto variables
   String? autoStartPos; 
   String? autoClimbPos; 
   int preload = 0;
@@ -132,7 +132,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   bool autoContrib = false;
   int autoL = 0;
 
-  // teleop variables (NOW SEPARATED)
+  // teleop variables
   String? teleStartPos;
   String? teleClimbPos;
   int teleDefCount = 0; double teleDefTime = 0.0; double _currHoldDef = 0.0; Timer? _defTimer;
@@ -144,7 +144,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   bool telePenalty = false;
   int teleL = 0;
 
-  // rating sliders (1-5)
+  // rating sliders
   double rateShoot = 1.0;
   double rateFeed = 1.0;
   double rateDef = 1.0;
@@ -239,16 +239,13 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     await prefs.setString('match_draft', jsonEncode(r.toJson()));
   }
 
-  // helper functions to manage the hold timers cleanly
   void _startTimer(Function(double) onTick, Timer? timerRef, Function(Timer) setTimer) {
     setTimer(Timer.periodic(const Duration(milliseconds: 100), (t) => onTick(0.1)));
   }
   
   void _endTimer(Timer? timerRef, double currentHold, Function(int, double) onComplete) {
     timerRef?.cancel();
-    if (currentHold > 0) {
-      onComplete(1, currentHold);
-    }
+    if (currentHold > 0) onComplete(1, currentHold);
     _saveDraft();
   }
 
@@ -256,7 +253,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     if (alliance == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Please Select Alliance!"), backgroundColor: Colors.red)); return; }
     if (matchCtrl.text.isEmpty || teamCtrl.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Enter Match & Team #!"), backgroundColor: Colors.red)); return; }
     
-    // Check all 4 new position variables
     if (autoStartPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Auto Start Position!"), backgroundColor: Colors.red)); return; }
     if (autoClimbPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Auto Climb Position!"), backgroundColor: Colors.red)); return; }
     if (teleStartPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Teleop Start Position!"), backgroundColor: Colors.red)); return; }
@@ -297,7 +293,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           }),
           title: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => setState((){ pageIdx = (pageIdx - 1 + pages.length) % pages.length; })),
-            // top level toggle
             if(pageIdx < 2) GestureDetector(
               onTap: () { setState(() { pageIdx==0 ? autoL=(autoL+1)%4 : teleL=(teleL+1)%4; _saveDraft(); }); },
               child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(12)), child: Text("Lvl ${pageIdx==0 ? autoL : teleL}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))
@@ -322,14 +317,11 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     return _buildSavePage();
   }
 
-  // auto view layout
   Widget _buildAutoView() {
     final screenHeight = MediaQuery.of(context).size.height;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        
         _buildPositionSelector("Auto Start Position", autoStartPos, (v) => setState(() { autoStartPos = v; _saveDraft(); })),
         const SizedBox(height: 12),
 
@@ -348,25 +340,11 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ),
         const SizedBox(height: 12),
 
-        SizedBox(
-          height: screenHeight * 0.25, 
-          child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), 
-            (_) => _startTimer((v) => setState(() => _currHoldScore += v), _scoreTimer, (t) => _scoreTimer = t),
-            (_) => _endTimer(_scoreTimer, _currHoldScore, (c, t) => setState(() { autoScoreCount += c; autoScoreTime += t; _currHoldScore = 0.0; }))
-          )
-        ),
+        SizedBox(height: screenHeight * 0.25, child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), (_) => _startTimer((v) => setState(() => _currHoldScore += v), _scoreTimer, (t) => _scoreTimer = t), (_) => _endTimer(_scoreTimer, _currHoldScore, (c, t) => setState(() { autoScoreCount += c; autoScoreTime += t; _currHoldScore = 0.0; })))),
         const SizedBox(height: 12),
-
-        SizedBox(
-          height: screenHeight * 0.25, 
-          child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), 
-            (_) => _startTimer((v) => setState(() => _currHoldPass += v), _passTimer, (t) => _passTimer = t),
-            (_) => _endTimer(_passTimer, _currHoldPass, (c, t) => setState(() { autoPassCount += c; autoPassTime += t; _currHoldPass = 0.0; }))
-          )
-        ),
+        SizedBox(height: screenHeight * 0.25, child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), (_) => _startTimer((v) => setState(() => _currHoldPass += v), _passTimer, (t) => _passTimer = t), (_) => _endTimer(_passTimer, _currHoldPass, (c, t) => setState(() { autoPassCount += c; autoPassTime += t; _currHoldPass = 0.0; })))),
         const SizedBox(height: 16),
 
-        // Added auto climb position
         _buildPositionSelector("Auto Climb Position", autoClimbPos, (v) => setState(() { autoClimbPos = v; _saveDraft(); })),
         const SizedBox(height: 16),
 
@@ -381,41 +359,24 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     );
   }
 
-  // teleop view layout
   Widget _buildTeleView() {
     final screenHeight = MediaQuery.of(context).size.height;
-    
-    // 18% of screen height per button. 4 buttons = 72% total screen height used.
     final btnHeight = screenHeight * 0.18;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        
-        SizedBox(height: btnHeight, child: _holdTimerBtn("DEFENSE", _currHoldDef, teleDefCount, const Color(0xFFD97706), 
-          (_) => _startTimer((v) => setState(() => _currHoldDef += v), _defTimer, (t) => _defTimer = t),
-          (_) => _endTimer(_defTimer, _currHoldDef, (c, t) => setState(() { teleDefCount += c; teleDefTime += t; _currHoldDef = 0.0; })))),
+        SizedBox(height: btnHeight, child: _holdTimerBtn("DEFENSE", _currHoldDef, teleDefCount, const Color(0xFFD97706), (_) => _startTimer((v) => setState(() => _currHoldDef += v), _defTimer, (t) => _defTimer = t), (_) => _endTimer(_defTimer, _currHoldDef, (c, t) => setState(() { teleDefCount += c; teleDefTime += t; _currHoldDef = 0.0; })))),
         const SizedBox(height: 12),
-        
-        SizedBox(height: btnHeight, child: _holdTimerBtn("COLLECTING", _currHoldCol, teleColCount, const Color(0xFF16A34A), 
-          (_) => _startTimer((v) => setState(() => _currHoldCol += v), _colTimer, (t) => _colTimer = t),
-          (_) => _endTimer(_colTimer, _currHoldCol, (c, t) => setState(() { teleColCount += c; teleColTime += t; _currHoldCol = 0.0; })))),
+        SizedBox(height: btnHeight, child: _holdTimerBtn("COLLECTING", _currHoldCol, teleColCount, const Color(0xFF16A34A), (_) => _startTimer((v) => setState(() => _currHoldCol += v), _colTimer, (t) => _colTimer = t), (_) => _endTimer(_colTimer, _currHoldCol, (c, t) => setState(() { teleColCount += c; teleColTime += t; _currHoldCol = 0.0; })))),
         const SizedBox(height: 12),
-
-        SizedBox(height: btnHeight, child: _holdTimerBtn("SHOOTING", _currHoldShoot, teleShootCount, const Color(0xFFDC2626), 
-          (_) => _startTimer((v) => setState(() => _currHoldShoot += v), _shootTimer, (t) => _shootTimer = t),
-          (_) => _endTimer(_shootTimer, _currHoldShoot, (c, t) => setState(() { teleShootCount += c; teleShootTime += t; _currHoldShoot = 0.0; })))),
+        SizedBox(height: btnHeight, child: _holdTimerBtn("SHOOTING", _currHoldShoot, teleShootCount, const Color(0xFFDC2626), (_) => _startTimer((v) => setState(() => _currHoldShoot += v), _shootTimer, (t) => _shootTimer = t), (_) => _endTimer(_shootTimer, _currHoldShoot, (c, t) => setState(() { teleShootCount += c; teleShootTime += t; _currHoldShoot = 0.0; })))),
         const SizedBox(height: 12),
-        
-        SizedBox(height: btnHeight, child: _holdTimerBtn("PASSING", _currHoldPassT, telePassCount, const Color(0xFF2563EB), 
-          (_) => _startTimer((v) => setState(() => _currHoldPassT += v), _passTimerT, (t) => _passTimerT = t),
-          (_) => _endTimer(_passTimerT, _currHoldPassT, (c, t) => setState(() { telePassCount += c; telePassTime += t; _currHoldPassT = 0.0; })))),
+        SizedBox(height: btnHeight, child: _holdTimerBtn("PASSING", _currHoldPassT, telePassCount, const Color(0xFF2563EB), (_) => _startTimer((v) => setState(() => _currHoldPassT += v), _passTimerT, (t) => _passTimerT = t), (_) => _endTimer(_passTimerT, _currHoldPassT, (c, t) => setState(() { telePassCount += c; telePassTime += t; _currHoldPassT = 0.0; })))),
         const SizedBox(height: 16),
 
         _buildPositionSelector("Teleop Climb Position", teleClimbPos, (v) => setState(() { teleClimbPos = v; _saveDraft(); })),
         const SizedBox(height: 16),
-
-        // Added teleop start position
         _buildPositionSelector("Teleop Start Position", teleStartPos, (v) => setState(() { teleStartPos = v; _saveDraft(); })),
         const SizedBox(height: 16),
 
@@ -437,12 +398,10 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         const SizedBox(height: 16),
         _input(teleNoteCtrl, "Teleop Notes...", lines: 4),
         const SizedBox(height: 20),
-          
       ]),
     );
   }
 
-  // final confirmation view
   Widget _buildSavePage() {
     return Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Text("FINALIZE MATCH", style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)), const SizedBox(height: 30),
@@ -457,7 +416,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // quick input bar for the bottom of the screen
   Widget _buildBottomBar() {
     return Container(padding: const EdgeInsets.all(8), color: const Color(0xFF1E293B), child: Row(children: [
       Expanded(flex: 2, child: Row(children: [_allianceBtn("Red", Colors.red), const SizedBox(width: 5), _allianceBtn("Blue", Colors.blue)])),
@@ -465,7 +423,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // reusable component for the left/center/right selectors
   Widget _buildPositionSelector(String title, String? currentValue, Function(String) onSelect) {
     return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: currentValue == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
       Text(currentValue == null ? "Select $title!" : title, style: TextStyle(color: currentValue == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
@@ -476,7 +433,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // basic ui bits
   Widget _btn(String l, Color c, VoidCallback cb, {bool isBig=false}) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: cb, child: Text(l, style: TextStyle(color: Colors.white, fontSize: isBig?28:16, fontWeight: FontWeight.bold)));
   Widget _preloadBtn(String l, Color c, VoidCallback cb) => ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: c, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.all(0)), onPressed: cb, child: FittedBox(fit: BoxFit.scaleDown, child: Text(l, style: const TextStyle(fontSize: 40, color: Colors.white, fontWeight: FontWeight.bold))));
   Widget _allianceBtn(String l, Color c) => Expanded(child: GestureDetector(onTap: () { setState(()=>alliance=l); _saveDraft(); }, child: Container(height: 50, decoration: BoxDecoration(color: alliance==l?c:AppColors.card, borderRadius: BorderRadius.circular(8), border: alliance==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l.toUpperCase(), style: TextStyle(color: alliance==l?Colors.white:c, fontWeight: FontWeight.bold))))));
@@ -493,7 +449,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     );
   }
 
-  // fully responsive hold timer button (zero pixel overflows!)
   Widget _holdTimerBtn(String title, double currentHold, int count, Color c, Function(TapDownDetails) onDown, Function(dynamic) onUp) {
     bool isHolding = currentHold > 0;
     return GestureDetector(
@@ -554,13 +509,58 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
   Widget _roleBtn(String l, Color c) => Expanded(child: GestureDetector(onTap: ()=>setState(()=>role=l), child: Container(height: 45, decoration: BoxDecoration(color: role==l?c:c.withOpacity(0.3), borderRadius: BorderRadius.circular(4), border: role==l?Border.all(color: Colors.white, width: 2):null), child: Center(child: Text(l, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))))));
 }
 
-// history menu
+// history menu with recycle bin feature
 class HistoryScreen extends StatefulWidget { final bool isPit; const HistoryScreen({required this.isPit, super.key}); @override State<HistoryScreen> createState() => _HistoryScreenState(); }
 class _HistoryScreenState extends State<HistoryScreen> {
   List<dynamic> history = [];
+  bool viewBin = false; // toggle between active records and the recycle bin
+
   @override void initState() { super.initState(); loadData(); }
-  void loadData() async { final prefs = await SharedPreferences.getInstance(); List<String> raw = prefs.getStringList(widget.isPit ? 'frc_pit' : 'frc_matches') ?? []; setState(() { history = raw.map((e) => widget.isPit ? PitRecord.fromJson(jsonDecode(e)) : MatchRecord.fromJson(jsonDecode(e))).toList(); if (!widget.isPit) history = history.reversed.toList(); else history.sort((a, b) => int.parse(a.team).compareTo(int.parse(b.team))); }); }
-  void deleteItem(int i) async { setState(() => history.removeAt(i)); final prefs = await SharedPreferences.getInstance(); List<dynamic> toSave = widget.isPit ? history : history.reversed.toList(); await prefs.setStringList(widget.isPit ? 'frc_pit' : 'frc_matches', toSave.map((e) => jsonEncode(e.toJson())).toList()); }
+
+  // keys for standard storage vs the recycle bin storage
+  String get mainKey => widget.isPit ? 'frc_pit' : 'frc_matches';
+  String get binKey => widget.isPit ? 'frc_pit_bin' : 'frc_matches_bin';
+  String get currentKey => viewBin ? binKey : mainKey;
+
+  void loadData() async { 
+    final prefs = await SharedPreferences.getInstance(); 
+    List<String> raw = prefs.getStringList(currentKey) ?? []; 
+    setState(() { 
+      history = raw.map((e) => widget.isPit ? PitRecord.fromJson(jsonDecode(e)) : MatchRecord.fromJson(jsonDecode(e))).toList(); 
+      if (!widget.isPit) history = history.reversed.toList(); 
+      else history.sort((a, b) => int.parse(a.team).compareTo(int.parse(b.team))); 
+    }); 
+  }
+
+  void deleteItem(int i) async { 
+    final prefs = await SharedPreferences.getInstance(); 
+    
+    // if we are looking at the main active list, push it to the bin instead of erasing it
+    if (!viewBin) {
+      var itemToBin = history[i];
+      List<String> binRaw = prefs.getStringList(binKey) ?? [];
+      binRaw.add(jsonEncode(itemToBin.toJson()));
+      await prefs.setStringList(binKey, binRaw);
+    }
+
+    setState(() => history.removeAt(i)); 
+    List<dynamic> toSave = widget.isPit ? history : history.reversed.toList(); 
+    await prefs.setStringList(currentKey, toSave.map((e) => jsonEncode(e.toJson())).toList()); 
+  }
+
+  void restoreItem(int i) async {
+    final prefs = await SharedPreferences.getInstance(); 
+    
+    // push the item back to the main active list
+    var itemToRestore = history[i];
+    List<String> mainRaw = prefs.getStringList(mainKey) ?? [];
+    mainRaw.add(jsonEncode(itemToRestore.toJson()));
+    await prefs.setStringList(mainKey, mainRaw);
+    
+    setState(() => history.removeAt(i)); 
+    List<dynamic> toSave = widget.isPit ? history : history.reversed.toList(); 
+    await prefs.setStringList(binKey, toSave.map((e) => jsonEncode(e.toJson())).toList()); 
+  }
   
   void showQR(dynamic rec) { 
     String header = rec is MatchRecord ? "Match ${rec.matchNum} - Team ${rec.team}" : "Team ${rec.team}"; 
@@ -577,7 +577,69 @@ class _HistoryScreenState extends State<HistoryScreen> {
     )); 
   }
 
-  @override Widget build(BuildContext context) { return Scaffold(backgroundColor: AppColors.bg, appBar: AppBar(title: Text(widget.isPit ? "Pit History" : "Match History"), backgroundColor: widget.isPit ? Colors.blue : Colors.amber[800]), body: history.isEmpty ? const Center(child: Text("No Records Found", style: TextStyle(color: Colors.white, fontSize: 20))) : ListView.builder(itemCount: history.length, itemBuilder: (ctx, i) { final rec = history[i]; String title = widget.isPit ? "Team ${rec.team}" : "Match ${rec.matchNum} | Team ${rec.team}"; String sub = widget.isPit ? "Role: ${rec.role}" : "${rec.alliance} | ${rec.timestamp.split(' ')[0]}"; return Card(color: AppColors.card, margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), child: ListTile(title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), subtitle: Text(sub, style: const TextStyle(color: Colors.grey)), trailing: Row(mainAxisSize: MainAxisSize.min, children: [ IconButton(icon: const Icon(Icons.qr_code, color: Colors.white), onPressed: () => showQR(rec)), IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () async { bool confirm = await _confirmExit(context, "Delete Record?", "This cannot be undone.", yesLabel: "DELETE"); if (confirm) deleteItem(i); }) ]))); })); }
+  @override Widget build(BuildContext context) { 
+    String titleText = widget.isPit ? "Pit History" : "Match History";
+    if (viewBin) titleText += " (Recycle Bin)";
+
+    return Scaffold(
+      backgroundColor: AppColors.bg, 
+      appBar: AppBar(
+        title: Text(titleText), 
+        backgroundColor: widget.isPit ? Colors.blue : Colors.amber[800],
+        actions: [
+          IconButton(
+            icon: Icon(viewBin ? Icons.list : Icons.delete_outline),
+            tooltip: viewBin ? "View Active Records" : "View Recycle Bin",
+            onPressed: () {
+              setState(() => viewBin = !viewBin);
+              loadData();
+            },
+          )
+        ],
+      ), 
+      body: history.isEmpty 
+        ? Center(child: Text(viewBin ? "Recycle Bin is Empty" : "No Records Found", style: const TextStyle(color: Colors.white, fontSize: 20))) 
+        : ListView.builder(
+          itemCount: history.length, 
+          itemBuilder: (ctx, i) { 
+            final rec = history[i]; 
+            String title = widget.isPit ? "Team ${rec.team}" : "Match ${rec.matchNum} | Team ${rec.team}"; 
+            String sub = widget.isPit ? "Role: ${rec.role}" : "${rec.alliance} | ${rec.timestamp.split(' ')[0]}"; 
+            
+            return Card(
+              color: AppColors.card, 
+              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), 
+              child: ListTile(
+                title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), 
+                subtitle: Text(sub, style: const TextStyle(color: Colors.grey)), 
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [ 
+                  
+                  // only show the qr code button if it's an active record
+                  if (!viewBin) 
+                    IconButton(icon: const Icon(Icons.qr_code, color: Colors.white), onPressed: () => showQR(rec)), 
+                  
+                  // only show the restore button if we are looking inside the recycle bin
+                  if (viewBin) 
+                    IconButton(icon: const Icon(Icons.restore, color: Colors.green), onPressed: () async { 
+                      bool confirm = await _confirmExit(context, "Restore Record?", "This will move the record back to active history.", yesLabel: "RESTORE"); 
+                      if (confirm) restoreItem(i); 
+                    }), 
+                  
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red), 
+                    onPressed: () async { 
+                      String diagTitle = viewBin ? "Permanent Delete?" : "Move to Bin?";
+                      String diagMsg = viewBin ? "This will erase the record forever." : "You can restore this later from the recycle bin.";
+                      bool confirm = await _confirmExit(context, diagTitle, diagMsg, yesLabel: "DELETE"); 
+                      if (confirm) deleteItem(i); 
+                    }
+                  ) 
+                ])
+              )
+            ); 
+          })
+    ); 
+  }
 }
 
 // paints the qr codes onto the screen
