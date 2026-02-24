@@ -116,7 +116,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
   // auto variables
   String? autoStartPos; 
-  String? autoClimbPos; 
+  String autoClimbPos = "None"; // Defaults to None, allows unchecking
   int preload = 0;
   int autoScoreCount = 0;
   double autoScoreTime = 0.0;
@@ -134,7 +134,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
   // teleop variables
   String? teleStartPos;
-  String? teleClimbPos;
+  String teleClimbPos = "None"; // Defaults to None, allows unchecking
   int teleDefCount = 0; double teleDefTime = 0.0; double _currHoldDef = 0.0; Timer? _defTimer;
   int teleColCount = 0; double teleColTime = 0.0; double _currHoldCol = 0.0; Timer? _colTimer;
   int teleShootCount = 0; double teleShootTime = 0.0; double _currHoldShoot = 0.0; Timer? _shootTimer;
@@ -192,14 +192,14 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           if (r.alliance.isNotEmpty) alliance = r.alliance;
           
           autoStartPos = r.autoStartPos.isEmpty ? null : r.autoStartPos;
-          autoClimbPos = r.autoClimbPos.isEmpty ? null : r.autoClimbPos;
+          autoClimbPos = r.autoClimbPos.isEmpty ? "None" : r.autoClimbPos;
           preload = r.preload;
           autoScoreCount = r.autoScoreCount; autoScoreTime = r.autoScoreTime;
           autoPassCount = r.autoPassCount; autoPassTime = r.autoPassTime;
           autoPenalty = r.autoPenalty; autoContrib = r.autoContrib; autoL = r.autoL;
 
           teleStartPos = r.teleStartPos.isEmpty ? null : r.teleStartPos;
-          teleClimbPos = r.teleClimbPos.isEmpty ? null : r.teleClimbPos;
+          teleClimbPos = r.teleClimbPos.isEmpty ? "None" : r.teleClimbPos;
           teleDefCount = r.teleDefCount; teleDefTime = r.teleDefTime;
           teleColCount = r.teleColCount; teleColTime = r.teleColTime;
           teleShootCount = r.teleShootCount; teleShootTime = r.teleShootTime;
@@ -221,11 +221,11 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
   void _saveDraft() async {
     MatchRecord r = MatchRecord(
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance ?? "", timestamp: "",
-      autoStartPos: autoStartPos ?? "", autoClimbPos: autoClimbPos ?? "", preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime,
+      autoStartPos: autoStartPos ?? "", autoClimbPos: autoClimbPos, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime,
       autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL,
       autoNotes: autoNoteCtrl.text,
       
-      teleStartPos: teleStartPos ?? "", teleClimbPos: teleClimbPos ?? "",
+      teleStartPos: teleStartPos ?? "", teleClimbPos: teleClimbPos,
       teleDefCount: teleDefCount, teleDefTime: teleDefTime,
       teleColCount: teleColCount, teleColTime: teleColTime,
       teleShootCount: teleShootCount, teleShootTime: teleShootTime,
@@ -253,15 +253,14 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     if (alliance == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Please Select Alliance!"), backgroundColor: Colors.red)); return; }
     if (matchCtrl.text.isEmpty || teamCtrl.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Enter Match & Team #!"), backgroundColor: Colors.red)); return; }
     
+    // Only Start Positions are mandatory now! Clims can be skipped/left as "None"
     if (autoStartPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Auto Start Position!"), backgroundColor: Colors.red)); return; }
-    if (autoClimbPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Auto Climb Position!"), backgroundColor: Colors.red)); return; }
     if (teleStartPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Teleop Start Position!"), backgroundColor: Colors.red)); return; }
-    if (teleClimbPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Teleop Climb Position!"), backgroundColor: Colors.red)); return; }
     
     MatchRecord r = MatchRecord(
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance!, timestamp: DateTime.now().toString(),
-      autoStartPos: autoStartPos!, autoClimbPos: autoClimbPos!, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime, autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL, autoNotes: autoNoteCtrl.text,
-      teleStartPos: teleStartPos!, teleClimbPos: teleClimbPos!, teleDefCount: teleDefCount, teleDefTime: teleDefTime, teleColCount: teleColCount, teleColTime: teleColTime, teleShootCount: teleShootCount, teleShootTime: teleShootTime, telePassCount: telePassCount, telePassTime: telePassTime,
+      autoStartPos: autoStartPos!, autoClimbPos: autoClimbPos, preload: preload, autoScoreCount: autoScoreCount, autoScoreTime: autoScoreTime, autoPassCount: autoPassCount, autoPassTime: autoPassTime, autoPenalty: autoPenalty, autoContrib: autoContrib, autoL: autoL, autoNotes: autoNoteCtrl.text,
+      teleStartPos: teleStartPos!, teleClimbPos: teleClimbPos, teleDefCount: teleDefCount, teleDefTime: teleDefTime, teleColCount: teleColCount, teleColTime: teleColTime, teleShootCount: teleShootCount, teleShootTime: teleShootTime, telePassCount: telePassCount, telePassTime: telePassTime,
       disabledTipped: disabledTipped, telePenalty: telePenalty, teleNotes: teleNoteCtrl.text, teleL: teleL,
       rateShoot: rateShoot, rateFeed: rateFeed, rateDef: rateDef, rateContrib: rateContrib, ratePen: ratePen,
     );
@@ -345,7 +344,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         SizedBox(height: screenHeight * 0.25, child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), (_) => _startTimer((v) => setState(() => _currHoldPass += v), _passTimer, (t) => _passTimer = t), (_) => _endTimer(_passTimer, _currHoldPass, (c, t) => setState(() { autoPassCount += c; autoPassTime += t; _currHoldPass = 0.0; })))),
         const SizedBox(height: 16),
 
-        _buildPositionSelector("Auto Climb Position", autoClimbPos, (v) => setState(() { autoClimbPos = v; _saveDraft(); })),
+        _buildOptionalPositionSelector("Auto Climb Position", autoClimbPos, (v) => setState(() { autoClimbPos = v; _saveDraft(); })),
         const SizedBox(height: 16),
 
         Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
@@ -375,7 +374,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         SizedBox(height: btnHeight, child: _holdTimerBtn("PASSING", _currHoldPassT, telePassCount, const Color(0xFF2563EB), (_) => _startTimer((v) => setState(() => _currHoldPassT += v), _passTimerT, (t) => _passTimerT = t), (_) => _endTimer(_passTimerT, _currHoldPassT, (c, t) => setState(() { telePassCount += c; telePassTime += t; _currHoldPassT = 0.0; })))),
         const SizedBox(height: 16),
 
-        _buildPositionSelector("Teleop Climb Position", teleClimbPos, (v) => setState(() { teleClimbPos = v; _saveDraft(); })),
+        _buildOptionalPositionSelector("Teleop Climb Position", teleClimbPos, (v) => setState(() { teleClimbPos = v; _saveDraft(); })),
         const SizedBox(height: 16),
         _buildPositionSelector("Teleop Start Position", teleStartPos, (v) => setState(() { teleStartPos = v; _saveDraft(); })),
         const SizedBox(height: 16),
@@ -427,11 +426,23 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
+  // Used for mandatory start positions (stays red if unselected)
   Widget _buildPositionSelector(String title, String? currentValue, Function(String) onSelect) {
     return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: currentValue == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
       Text(currentValue == null ? "Select $title!" : title, style: TextStyle(color: currentValue == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
       Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
         onTap: () => onSelect(p),
+        child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: currentValue==p ? Colors.blueAccent : Colors.grey[800], borderRadius: BorderRadius.circular(8)), child: Center(child: Text(p, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))))
+      ))).toList()),
+    ]));
+  }
+
+  // Used for optional climb positions (defaults to None, allows unchecking)
+  Widget _buildOptionalPositionSelector(String title, String currentValue, Function(String) onSelect) {
+    return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
+      Text("$title: $currentValue", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
+      Row(children: ["Left", "Center", "Right"].map((p) => Expanded(child: GestureDetector(
+        onTap: () => onSelect(currentValue == p ? "None" : p),
         child: Container(margin: const EdgeInsets.symmetric(horizontal: 4), padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: currentValue==p ? Colors.blueAccent : Colors.grey[800], borderRadius: BorderRadius.circular(8)), child: Center(child: Text(p, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16))))
       ))).toList()),
     ]));
@@ -512,7 +523,6 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
             _card("Dimensions", [ Row(children: [Expanded(child: _labeledInput(wCtrl, "Width (in)")), const SizedBox(width: 12), Expanded(child: _labeledInput(lCtrl, "Length (in)")), const SizedBox(width: 12), Expanded(child: _labeledInput(hCtrl, "Height (in)"))]), const SizedBox(height: 12), Row(children: [Expanded(child: _labeledInput(weightCtrl, "Weight (lbs)")), const Spacer(flex: 2)]) ]), const SizedBox(height: 16),
             _card("Features", [ Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Swerve", isSwerve, Colors.greenAccent, ()=>setState((){isSwerve=!isSwerve;if(isSwerve)isTank=false;})), _customToggle("Tank", isTank, Colors.redAccent, ()=>setState((){isTank=!isTank;if(isTank)isSwerve=false;}))]), const SizedBox(height: 16), Row(children: [Expanded(child: _labeledInput(fuelCtrl, "Fuel Capacity")), const SizedBox(width: 12), Expanded(child: _labeledInput(fpsCtrl, "Fuel / Sec"))]), const SizedBox(height: 16), Text("Stability: ${stability.toInt()}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: stability, min: 1, max: 5, divisions: 4, activeColor: Colors.redAccent, label: "${stability.toInt()}", onChanged: (v)=>setState(()=>stability=v)), const SizedBox(height: 16), Text("Accuracy: ${accuracy.toInt()}%", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: accuracy, min: 0, max: 100, divisions: 20, activeColor: Colors.blueAccent, label: "${accuracy.toInt()}%", onChanged: (v)=>setState(()=>accuracy=v)), const SizedBox(height: 16), TextField(controller: commentCtrl, maxLines: 4, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: "Auto Comments", hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFF4B5563), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)))) ]), const SizedBox(height: 16),
             
-            // Updated Climb Selector: Explicitly says "None" and lets you tap to unselect!
             _card("Capabilities", [ 
               Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Trench", isTrench, Colors.greenAccent, ()=>setState(()=>isTrench=!isTrench)), _customToggle("Bump", isBump, Colors.redAccent, ()=>setState(()=>isBump=!isBump))]), 
               const SizedBox(height: 16), 
