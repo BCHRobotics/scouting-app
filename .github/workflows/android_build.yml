@@ -1,0 +1,49 @@
+name: Build Android APK
+
+# This tells GitHub to run the build whenever you push new code to the 'main' branch
+# It also allows you to run it manually (workflow_dispatch)
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Grab your code from the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Java (Required to build Android apps)
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. Set up the Flutter environment
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # 4. Download all your project dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 5. Build the Android app! (We use --debug to bypass the need for Google Play security keys for now)
+      - name: Build APK
+        run: flutter build apk --debug
+
+      # 6. Upload the finished APK so you can download it
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-scouting-app-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
