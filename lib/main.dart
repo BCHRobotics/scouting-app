@@ -360,18 +360,35 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
   Widget _buildTeleView() {
     final screenHeight = MediaQuery.of(context).size.height;
-    final btnHeight = screenHeight * 0.18;
+    final btnHeight = screenHeight * 0.22; // Adjusted to be taller for the tablet grid
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        SizedBox(height: btnHeight, child: _holdTimerBtn("DEFENSE", _currHoldDef, teleDefCount, const Color(0xFFD97706), (_) => _startTimer((v) => setState(() => _currHoldDef += v), _defTimer, (t) => _defTimer = t), (_) => _endTimer(_defTimer, _currHoldDef, (c, t) => setState(() { teleDefCount += c; teleDefTime += t; _currHoldDef = 0.0; })))),
-        const SizedBox(height: 12),
-        SizedBox(height: btnHeight, child: _holdTimerBtn("COLLECTING", _currHoldCol, teleColCount, const Color(0xFF16A34A), (_) => _startTimer((v) => setState(() => _currHoldCol += v), _colTimer, (t) => _colTimer = t), (_) => _endTimer(_colTimer, _currHoldCol, (c, t) => setState(() { teleColCount += c; teleColTime += t; _currHoldCol = 0.0; })))),
-        const SizedBox(height: 12),
-        SizedBox(height: btnHeight, child: _holdTimerBtn("SHOOTING", _currHoldShoot, teleShootCount, const Color(0xFFDC2626), (_) => _startTimer((v) => setState(() => _currHoldShoot += v), _shootTimer, (t) => _shootTimer = t), (_) => _endTimer(_shootTimer, _currHoldShoot, (c, t) => setState(() { teleShootCount += c; teleShootTime += t; _currHoldShoot = 0.0; })))),
-        const SizedBox(height: 12),
-        SizedBox(height: btnHeight, child: _holdTimerBtn("PASSING", _currHoldPassT, telePassCount, const Color(0xFF2563EB), (_) => _startTimer((v) => setState(() => _currHoldPassT += v), _passTimerT, (t) => _passTimerT = t), (_) => _endTimer(_passTimerT, _currHoldPassT, (c, t) => setState(() { telePassCount += c; telePassTime += t; _currHoldPassT = 0.0; })))),
+        
+        // Horizontal padding added so scouters have empty margins on the sides to scroll
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0), 
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: SizedBox(height: btnHeight, child: _holdTimerBtn("DEFENSE", _currHoldDef, teleDefCount, const Color(0xFFD97706), (_) => _startTimer((v) => setState(() => _currHoldDef += v), _defTimer, (t) => _defTimer = t), (_) => _endTimer(_defTimer, _currHoldDef, (c, t) => setState(() { teleDefCount += c; teleDefTime += t; _currHoldDef = 0.0; }))))),
+                  const SizedBox(width: 12),
+                  Expanded(child: SizedBox(height: btnHeight, child: _holdTimerBtn("PASSING", _currHoldPassT, telePassCount, const Color(0xFF2563EB), (_) => _startTimer((v) => setState(() => _currHoldPassT += v), _passTimerT, (t) => _passTimerT = t), (_) => _endTimer(_passTimerT, _currHoldPassT, (c, t) => setState(() { telePassCount += c; telePassTime += t; _currHoldPassT = 0.0; }))))),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: SizedBox(height: btnHeight, child: _holdTimerBtn("COLLECTING", _currHoldCol, teleColCount, const Color(0xFF16A34A), (_) => _startTimer((v) => setState(() => _currHoldCol += v), _colTimer, (t) => _colTimer = t), (_) => _endTimer(_colTimer, _currHoldCol, (c, t) => setState(() { teleColCount += c; teleColTime += t; _currHoldCol = 0.0; }))))),
+                  const SizedBox(width: 12),
+                  Expanded(child: SizedBox(height: btnHeight, child: _holdTimerBtn("SHOOTING", _currHoldShoot, teleShootCount, const Color(0xFFDC2626), (_) => _startTimer((v) => setState(() => _currHoldShoot += v), _shootTimer, (t) => _shootTimer = t), (_) => _endTimer(_shootTimer, _currHoldShoot, (c, t) => setState(() { teleShootCount += c; teleShootTime += t; _currHoldShoot = 0.0; }))))),
+                ],
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
 
         _buildOptionalPositionSelector("Teleop Climb Position", teleClimbPos, (v) => setState(() { teleClimbPos = v; _saveDraft(); })),
