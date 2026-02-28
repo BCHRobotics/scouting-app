@@ -116,7 +116,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
   // auto variables
   String? autoStartPos; 
-  String autoClimbPos = "None"; // Defaults to None, allows unchecking
+  String autoClimbPos = "None"; 
   int preload = 0;
   int autoScoreCount = 0;
   double autoScoreTime = 0.0;
@@ -134,7 +134,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
   // teleop variables
   String? teleStartPos;
-  String teleClimbPos = "None"; // Defaults to None, allows unchecking
+  String teleClimbPos = "None"; 
   int teleDefCount = 0; double teleDefTime = 0.0; double _currHoldDef = 0.0; Timer? _defTimer;
   int teleColCount = 0; double teleColTime = 0.0; double _currHoldCol = 0.0; Timer? _colTimer;
   int teleShootCount = 0; double teleShootTime = 0.0; double _currHoldShoot = 0.0; Timer? _shootTimer;
@@ -464,10 +464,10 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     );
   }
 
-  Widget _holdTimerBtn(String title, double currentHold, int count, Color c, Function(TapDownDetails) onDown, Function(dynamic) onUp) {
+  Widget _holdTimerBtn(String title, double currentHold, int count, Color c, Function(dynamic) onDown, Function(dynamic) onUp) {
     bool isHolding = currentHold > 0;
-    return GestureDetector(
-      onTapDown: onDown, onTapUp: onUp, onTapCancel: () => onUp(null),
+    return Listener(
+      onPointerDown: onDown, onPointerUp: onUp, onPointerCancel: (event) => onUp(null),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         decoration: BoxDecoration(color: isHolding ? c.withOpacity(0.8) : AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: c, width: 4)),

@@ -147,13 +147,15 @@ class PitRecord {
   String toQRString() {
     // combine drivetrain into a single variable
     String drivetrain = "Other";
-    if (swerve) drivetrain = "Swerve";
-    else if (tank) drivetrain = "Tank";
+    if (swerve) {
+      drivetrain = "Swerve";
+    } else if (tank) drivetrain = "Tank";
     
     // combine trench/bump into a single variable
     String trenchBump = "None";
-    if (trench && bump) trenchBump = "Both";
-    else if (trench) trenchBump = "Trench";
+    if (trench && bump) {
+      trenchBump = "Both";
+    } else if (trench) trenchBump = "Trench";
     else if (bump) trenchBump = "Bump";
     
     String cleanComments = comments.replaceAll('\n', ' ').replaceAll('\t', ' ');
