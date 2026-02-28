@@ -581,8 +581,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
     List<String> raw = prefs.getStringList(currentKey) ?? []; 
     setState(() { 
       history = raw.map((e) => widget.isPit ? PitRecord.fromJson(jsonDecode(e)) : MatchRecord.fromJson(jsonDecode(e))).toList(); 
-      if (!widget.isPit) history = history.reversed.toList(); 
-      else history.sort((a, b) => int.parse(a.team).compareTo(int.parse(b.team))); 
+      if (!widget.isPit) {
+        history = history.reversed.toList();
+      } else {
+        history.sort((a, b) => int.parse(a.team).compareTo(int.parse(b.team)));
+      } 
     }); 
   }
 
