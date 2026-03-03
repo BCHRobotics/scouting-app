@@ -1,4 +1,3 @@
-
 // blueprints for our app data
 
 // 1. match record
@@ -120,7 +119,6 @@ class MatchRecord {
     String tDis = disabledTipped ? 'Yes' : 'No';
     String tPen = telePenalty ? 'Yes' : 'No';
     
-    // clean up notes so they don't break the qr tab formatting
     String cleanAuto = autoNotes.replaceAll('\n', ' ').replaceAll('\t', ' ');
     String cleanTele = teleNotes.replaceAll('\n', ' ').replaceAll('\t', ' ');
 
@@ -134,24 +132,22 @@ class MatchRecord {
 
 // 2. pit record
 class PitRecord {
-  String team, width, length, height, weight, fuel, fuelPerSec, comments, climbLvl, role;
+  String team, width, length, height, weight, fuel, fuelPerSec, intakePerSec, comments, climbLvl, role;
   bool swerve, tank, trench, bump;
   double stability, accuracy;
 
-  PitRecord({required this.team, required this.width, required this.length, required this.height, required this.weight, required this.swerve, required this.tank, required this.fuel, required this.fuelPerSec, required this.stability, required this.accuracy, required this.comments, required this.trench, required this.bump, required this.climbLvl, required this.role});
+  PitRecord({required this.team, required this.width, required this.length, required this.height, required this.weight, required this.swerve, required this.tank, required this.fuel, required this.fuelPerSec, required this.intakePerSec, required this.stability, required this.accuracy, required this.comments, required this.trench, required this.bump, required this.climbLvl, required this.role});
 
-  Map<String, dynamic> toJson() => {'team': team, 'width': width, 'length': length, 'height': height, 'weight': weight, 'swerve': swerve, 'tank': tank, 'fuel': fuel, 'fuelPerSec': fuelPerSec, 'stability': stability, 'accuracy': accuracy, 'comments': comments, 'trench': trench, 'bump': bump, 'climb': climbLvl, 'role': role};
+  Map<String, dynamic> toJson() => {'team': team, 'width': width, 'length': length, 'height': height, 'weight': weight, 'swerve': swerve, 'tank': tank, 'fuel': fuel, 'fuelPerSec': fuelPerSec, 'intakePerSec': intakePerSec, 'stability': stability, 'accuracy': accuracy, 'comments': comments, 'trench': trench, 'bump': bump, 'climb': climbLvl, 'role': role};
   
-  factory PitRecord.fromJson(Map<String, dynamic> json) => PitRecord(team: json['team'] ?? "", width: json['width'] ?? "", length: json['length'] ?? "", height: json['height'] ?? "", weight: json['weight'] ?? "", swerve: json['swerve'] ?? false, tank: json['tank'] ?? false, fuel: json['fuel'] ?? "", fuelPerSec: json['fuelPerSec'] ?? "", stability: (json['stability'] ?? 1.0).toDouble(), accuracy: (json['accuracy'] ?? 0.0).toDouble(), comments: json['comments'] ?? "", trench: json['trench'] ?? false, bump: json['bump'] ?? false, climbLvl: json['climb'] ?? "None", role: json['role'] ?? "");
+  factory PitRecord.fromJson(Map<String, dynamic> json) => PitRecord(team: json['team'] ?? "", width: json['width'] ?? "", length: json['length'] ?? "", height: json['height'] ?? "", weight: json['weight'] ?? "", swerve: json['swerve'] ?? false, tank: json['tank'] ?? false, fuel: json['fuel'] ?? "", fuelPerSec: json['fuelPerSec'] ?? "", intakePerSec: json['intakePerSec'] ?? "", stability: (json['stability'] ?? 1.0).toDouble(), accuracy: (json['accuracy'] ?? 0.0).toDouble(), comments: json['comments'] ?? "", trench: json['trench'] ?? false, bump: json['bump'] ?? false, climbLvl: json['climb'] ?? "None", role: json['role'] ?? "");
   
   String toQRString() {
-    // combine drivetrain into a single variable
     String drivetrain = "Other";
     if (swerve) {
       drivetrain = "Swerve";
     } else if (tank) drivetrain = "Tank";
     
-    // combine trench/bump into a single variable
     String trenchBump = "None";
     if (trench && bump) {
       trenchBump = "Both";
@@ -161,7 +157,7 @@ class PitRecord {
     String cleanComments = comments.replaceAll('\n', ' ').replaceAll('\t', ' ');
     String finalClimb = climbLvl.isEmpty ? "None" : climbLvl;
     
-    // outputs to 2 single columns now instead of 4 separate true/false columns
-    return "$team\t$width\t$length\t$height\t$weight\t$drivetrain\t$fuel\t$fuelPerSec\t${stability.toInt()}\t${accuracy.toInt()}\t$trenchBump\t$finalClimb\t$role\t$cleanComments";
+    // Outputs the new IntakePerSec field into the QR Code
+    return "$team\t$width\t$length\t$height\t$weight\t$drivetrain\t$fuel\t$fuelPerSec\t$intakePerSec\t${stability.toInt()}\t${accuracy.toInt()}\t$trenchBump\t$finalClimb\t$role\t$cleanComments";
   }
 }

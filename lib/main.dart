@@ -14,7 +14,6 @@ class AppColors {
   static const pitCard = Color(0xFF1E1B4B);  
 }
 
-// simple exit confirmation dialog
 Future<bool> _confirmExit(BuildContext context, String title, String msg, {String yesLabel = "EXIT"}) async {
   return (await showDialog(
     context: context,
@@ -177,7 +176,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     super.dispose(); 
   }
 
-  // loads saved data if the app was accidentally closed
   Future<void> _loadDraft() async {
     final prefs = await SharedPreferences.getInstance();
     String? jsonStr = prefs.getString('match_draft');
@@ -217,7 +215,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     }
   }
 
-  // writes state to memory so we don't lose anything
   void _saveDraft() async {
     MatchRecord r = MatchRecord(
       matchNum: matchCtrl.text, team: teamCtrl.text, alliance: alliance ?? "", timestamp: "",
@@ -253,7 +250,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     if (alliance == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Please Select Alliance!"), backgroundColor: Colors.red)); return; }
     if (matchCtrl.text.isEmpty || teamCtrl.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Enter Match & Team #!"), backgroundColor: Colors.red)); return; }
     
-    // Only Start Positions are mandatory now! Clims can be skipped/left as "None"
     if (autoStartPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Auto Start Position!"), backgroundColor: Colors.red)); return; }
     if (teleStartPos == null) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("ERROR: Select Teleop Start Position!"), backgroundColor: Colors.red)); return; }
     
@@ -360,13 +356,12 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
   Widget _buildTeleView() {
     final screenHeight = MediaQuery.of(context).size.height;
-    final btnHeight = screenHeight * 0.22; // Adjusted to be taller for the tablet grid
+    final btnHeight = screenHeight * 0.22;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         
-        // Horizontal padding added so scouters have empty margins on the sides to scroll
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32.0), 
           child: Column(
@@ -406,10 +401,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         const Text("Qualitative Ratings", textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         
-        // Custom 0-100 percentage slider
         _ratingSlider("Shooter Accuracy", rateShoot, (v)=>setState((){rateShoot=v; _saveDraft();}), min: 0, max: 100, divisions: 20, suffix: "%"),
-        
-        // Standard 1-5 sliders
         _ratingSlider("Feeding Ability", rateFeed, (v)=>setState((){rateFeed=v; _saveDraft();})),
         _ratingSlider("Defense", rateDef, (v)=>setState((){rateDef=v; _saveDraft();})),
         _ratingSlider("Contribution", rateContrib, (v)=>setState((){rateContrib=v; _saveDraft();})),
@@ -443,7 +435,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // Used for mandatory start positions (stays red if unselected)
   Widget _buildPositionSelector(String title, String? currentValue, Function(String) onSelect) {
     return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: currentValue == null ? Colors.redAccent : Colors.transparent, width: 2)), child: Column(children: [
       Text(currentValue == null ? "Select $title!" : title, style: TextStyle(color: currentValue == null ? Colors.redAccent : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
@@ -454,7 +445,6 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     ]));
   }
 
-  // Used for optional climb positions (defaults to None, allows unchecking)
   Widget _buildOptionalPositionSelector(String title, String currentValue, Function(String) onSelect) {
     return Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
       Text("$title: $currentValue", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 10),
@@ -513,16 +503,16 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 class PitScoutingScreen extends StatefulWidget { const PitScoutingScreen({super.key}); @override State<PitScoutingScreen> createState() => _PitScoutingScreenState(); }
 class _PitScoutingScreenState extends State<PitScoutingScreen> {
   final teamCtrl = TextEditingController(), wCtrl = TextEditingController(), lCtrl = TextEditingController(), hCtrl = TextEditingController();
-  final weightCtrl = TextEditingController(), fuelCtrl = TextEditingController(), fpsCtrl = TextEditingController(), commentCtrl = TextEditingController();
+  final weightCtrl = TextEditingController(), fuelCtrl = TextEditingController(), fpsCtrl = TextEditingController(), intakeCtrl = TextEditingController(), commentCtrl = TextEditingController(); // <-- Added intakeCtrl
   bool isSwerve = false, isTank = false, isTrench = false, isBump = false;
   double stability = 1.0, accuracy = 0.0;
   
-  // Climb level defaults to "None"
   String climbLvl = "None", role = "";
 
   void savePit() async {
     if (teamCtrl.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Missing Team #"), backgroundColor: Colors.red)); return; }
-    PitRecord rec = PitRecord(team: teamCtrl.text, width: wCtrl.text, length: lCtrl.text, height: hCtrl.text, weight: weightCtrl.text, swerve: isSwerve, tank: isTank, fuel: fuelCtrl.text, fuelPerSec: fpsCtrl.text, stability: stability, accuracy: accuracy, comments: commentCtrl.text, trench: isTrench, bump: isBump, climbLvl: climbLvl, role: role);
+    // Passing the intake data to the updated record model
+    PitRecord rec = PitRecord(team: teamCtrl.text, width: wCtrl.text, length: lCtrl.text, height: hCtrl.text, weight: weightCtrl.text, swerve: isSwerve, tank: isTank, fuel: fuelCtrl.text, fuelPerSec: fpsCtrl.text, intakePerSec: intakeCtrl.text, stability: stability, accuracy: accuracy, comments: commentCtrl.text, trench: isTrench, bump: isBump, climbLvl: climbLvl, role: role);
     final prefs = await SharedPreferences.getInstance();
     List<String> s = prefs.getStringList('frc_pit') ?? [];
     s.add(jsonEncode(rec.toJson()));
@@ -538,7 +528,9 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
           Container(padding: const EdgeInsets.all(16), color: Colors.red[900], child: Row(children: [ IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () async { if(await _confirmExit(context, "Exit Pit Scouting?", "You will LOSE unsaved data.") && mounted) Navigator.pop(context); }), Expanded(child: Center(child: SizedBox(width: 150, child: TextField(controller: teamCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold), decoration: const InputDecoration(hintText: "Team #", hintStyle: TextStyle(color: Colors.white60), border: InputBorder.none))))), const SizedBox(width: 40) ])),
           Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(children: [
             _card("Dimensions", [ Row(children: [Expanded(child: _labeledInput(wCtrl, "Width (in)")), const SizedBox(width: 12), Expanded(child: _labeledInput(lCtrl, "Length (in)")), const SizedBox(width: 12), Expanded(child: _labeledInput(hCtrl, "Height (in)"))]), const SizedBox(height: 12), Row(children: [Expanded(child: _labeledInput(weightCtrl, "Weight (lbs)")), const Spacer(flex: 2)]) ]), const SizedBox(height: 16),
-            _card("Features", [ Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Swerve", isSwerve, Colors.greenAccent, ()=>setState((){isSwerve=!isSwerve;if(isSwerve)isTank=false;})), _customToggle("Tank", isTank, Colors.redAccent, ()=>setState((){isTank=!isTank;if(isTank)isSwerve=false;}))]), const SizedBox(height: 16), Row(children: [Expanded(child: _labeledInput(fuelCtrl, "Fuel Capacity")), const SizedBox(width: 12), Expanded(child: _labeledInput(fpsCtrl, "Fuel / Sec"))]), const SizedBox(height: 16), Text("Stability: ${stability.toInt()}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: stability, min: 1, max: 5, divisions: 4, activeColor: Colors.redAccent, label: "${stability.toInt()}", onChanged: (v)=>setState(()=>stability=v)), const SizedBox(height: 16), Text("Accuracy: ${accuracy.toInt()}%", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: accuracy, min: 0, max: 100, divisions: 20, activeColor: Colors.blueAccent, label: "${accuracy.toInt()}%", onChanged: (v)=>setState(()=>accuracy=v)), const SizedBox(height: 16), TextField(controller: commentCtrl, maxLines: 4, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: "Auto Comments", hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFF4B5563), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)))) ]), const SizedBox(height: 16),
+            
+            // Reorganized to fit "Intake / Sec" into the Features card 
+            _card("Features", [ Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Swerve", isSwerve, Colors.greenAccent, ()=>setState((){isSwerve=!isSwerve;if(isSwerve)isTank=false;})), _customToggle("Tank", isTank, Colors.redAccent, ()=>setState((){isTank=!isTank;if(isTank)isSwerve=false;}))]), const SizedBox(height: 16), Row(children: [Expanded(child: _labeledInput(fuelCtrl, "Fuel Capacity")), const SizedBox(width: 8), Expanded(child: _labeledInput(fpsCtrl, "Shoot / Sec")), const SizedBox(width: 8), Expanded(child: _labeledInput(intakeCtrl, "Intake / Sec"))]), const SizedBox(height: 16), Text("Stability: ${stability.toInt()}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: stability, min: 1, max: 5, divisions: 4, activeColor: Colors.redAccent, label: "${stability.toInt()}", onChanged: (v)=>setState(()=>stability=v)), const SizedBox(height: 16), Text("Accuracy: ${accuracy.toInt()}%", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: accuracy, min: 0, max: 100, divisions: 20, activeColor: Colors.blueAccent, label: "${accuracy.toInt()}%", onChanged: (v)=>setState(()=>accuracy=v)), const SizedBox(height: 16), TextField(controller: commentCtrl, maxLines: 4, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: "Auto Comments", hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFF4B5563), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)))) ]), const SizedBox(height: 16),
             
             _card("Capabilities", [ 
               Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Trench", isTrench, Colors.greenAccent, ()=>setState(()=>isTrench=!isTrench)), _customToggle("Bump", isBump, Colors.redAccent, ()=>setState(()=>isBump=!isBump))]), 
