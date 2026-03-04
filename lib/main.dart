@@ -335,9 +335,18 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         ),
         const SizedBox(height: 12),
 
-        SizedBox(height: screenHeight * 0.25, child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), (_) => _startTimer((v) => setState(() => _currHoldScore += v), _scoreTimer, (t) => _scoreTimer = t), (_) => _endTimer(_scoreTimer, _currHoldScore, (c, t) => setState(() { autoScoreCount += c; autoScoreTime += t; _currHoldScore = 0.0; })))),
-        const SizedBox(height: 12),
-        SizedBox(height: screenHeight * 0.25, child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), (_) => _startTimer((v) => setState(() => _currHoldPass += v), _passTimer, (t) => _passTimer = t), (_) => _endTimer(_passTimer, _currHoldPass, (c, t) => setState(() { autoPassCount += c; autoPassTime += t; _currHoldPass = 0.0; })))),
+        // Added 32.0 horizontal padding here so Auto buttons have space on the sides to swipe
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: screenHeight * 0.25, child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), (_) => _startTimer((v) => setState(() => _currHoldScore += v), _scoreTimer, (t) => _scoreTimer = t), (_) => _endTimer(_scoreTimer, _currHoldScore, (c, t) => setState(() { autoScoreCount += c; autoScoreTime += t; _currHoldScore = 0.0; })))),
+              const SizedBox(height: 12),
+              SizedBox(height: screenHeight * 0.25, child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), (_) => _startTimer((v) => setState(() => _currHoldPass += v), _passTimer, (t) => _passTimer = t), (_) => _endTimer(_passTimer, _currHoldPass, (c, t) => setState(() { autoPassCount += c; autoPassTime += t; _currHoldPass = 0.0; })))),
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
 
         _buildOptionalPositionSelector("Auto Climb Position", autoClimbPos, (v) => setState(() { autoClimbPos = v; _saveDraft(); })),
@@ -503,7 +512,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 class PitScoutingScreen extends StatefulWidget { const PitScoutingScreen({super.key}); @override State<PitScoutingScreen> createState() => _PitScoutingScreenState(); }
 class _PitScoutingScreenState extends State<PitScoutingScreen> {
   final teamCtrl = TextEditingController(), wCtrl = TextEditingController(), lCtrl = TextEditingController(), hCtrl = TextEditingController();
-  final weightCtrl = TextEditingController(), fuelCtrl = TextEditingController(), fpsCtrl = TextEditingController(), intakeCtrl = TextEditingController(), commentCtrl = TextEditingController(); // <-- Added intakeCtrl
+  final weightCtrl = TextEditingController(), fuelCtrl = TextEditingController(), fpsCtrl = TextEditingController(), intakeCtrl = TextEditingController(), commentCtrl = TextEditingController();
   bool isSwerve = false, isTank = false, isTrench = false, isBump = false;
   double stability = 1.0, accuracy = 0.0;
   
@@ -511,7 +520,6 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
 
   void savePit() async {
     if (teamCtrl.text.isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Missing Team #"), backgroundColor: Colors.red)); return; }
-    // Passing the intake data to the updated record model
     PitRecord rec = PitRecord(team: teamCtrl.text, width: wCtrl.text, length: lCtrl.text, height: hCtrl.text, weight: weightCtrl.text, swerve: isSwerve, tank: isTank, fuel: fuelCtrl.text, fuelPerSec: fpsCtrl.text, intakePerSec: intakeCtrl.text, stability: stability, accuracy: accuracy, comments: commentCtrl.text, trench: isTrench, bump: isBump, climbLvl: climbLvl, role: role);
     final prefs = await SharedPreferences.getInstance();
     List<String> s = prefs.getStringList('frc_pit') ?? [];
@@ -529,7 +537,6 @@ class _PitScoutingScreenState extends State<PitScoutingScreen> {
           Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(children: [
             _card("Dimensions", [ Row(children: [Expanded(child: _labeledInput(wCtrl, "Width (in)")), const SizedBox(width: 12), Expanded(child: _labeledInput(lCtrl, "Length (in)")), const SizedBox(width: 12), Expanded(child: _labeledInput(hCtrl, "Height (in)"))]), const SizedBox(height: 12), Row(children: [Expanded(child: _labeledInput(weightCtrl, "Weight (lbs)")), const Spacer(flex: 2)]) ]), const SizedBox(height: 16),
             
-            // Reorganized to fit "Intake / Sec" into the Features card 
             _card("Features", [ Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_customToggle("Swerve", isSwerve, Colors.greenAccent, ()=>setState((){isSwerve=!isSwerve;if(isSwerve)isTank=false;})), _customToggle("Tank", isTank, Colors.redAccent, ()=>setState((){isTank=!isTank;if(isTank)isSwerve=false;}))]), const SizedBox(height: 16), Row(children: [Expanded(child: _labeledInput(fuelCtrl, "Fuel Capacity")), const SizedBox(width: 8), Expanded(child: _labeledInput(fpsCtrl, "Shoot / Sec")), const SizedBox(width: 8), Expanded(child: _labeledInput(intakeCtrl, "Intake / Sec"))]), const SizedBox(height: 16), Text("Stability: ${stability.toInt()}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: stability, min: 1, max: 5, divisions: 4, activeColor: Colors.redAccent, label: "${stability.toInt()}", onChanged: (v)=>setState(()=>stability=v)), const SizedBox(height: 16), Text("Accuracy: ${accuracy.toInt()}%", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), Slider(value: accuracy, min: 0, max: 100, divisions: 20, activeColor: Colors.blueAccent, label: "${accuracy.toInt()}%", onChanged: (v)=>setState(()=>accuracy=v)), const SizedBox(height: 16), TextField(controller: commentCtrl, maxLines: 4, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: "Auto Comments", hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFF4B5563), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)))) ]), const SizedBox(height: 16),
             
             _card("Capabilities", [ 
