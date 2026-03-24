@@ -376,7 +376,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
         Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
           _largeCheckbox("Penalty", autoPenalty, Colors.redAccent, (v)=>setState((){autoPenalty=v; _saveDraft();})),
-          const SizedBox(height: 15),
+          const SizedBox(height: 55),
           _largeCheckbox("Contributed", autoContrib, Colors.greenAccent, (v)=>setState((){autoContrib=v; _saveDraft();})),
           const SizedBox(height: 20),
           _input(autoNoteCtrl, "Auto Notes...", lines: 3)
