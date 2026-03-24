@@ -341,7 +341,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(height: screenHeight * 0.25, child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFF15803D), (_) => _startTimer((v) => setState(() => _currHoldScore += v), _scoreTimer, (t) => _scoreTimer = t), (_) => _endTimer(_scoreTimer, _currHoldScore, (c, t) => setState(() { autoScoreCount += c; autoScoreTime += t; _currHoldScore = 0.0; })))),
+              SizedBox(height: screenHeight * 0.25, child: _holdTimerBtn("SCORE", _currHoldScore, autoScoreCount, const Color(0xFFDC2626), (_) => _startTimer((v) => setState(() => _currHoldScore += v), _scoreTimer, (t) => _scoreTimer = t), (_) => _endTimer(_scoreTimer, _currHoldScore, (c, t) => setState(() { autoScoreCount += c; autoScoreTime += t; _currHoldScore = 0.0; })))),
               const SizedBox(height: 12),
               SizedBox(height: screenHeight * 0.25, child: _holdTimerBtn("PASS", _currHoldPass, autoPassCount, const Color(0xFF2563EB), (_) => _startTimer((v) => setState(() => _currHoldPass += v), _passTimer, (t) => _passTimer = t), (_) => _endTimer(_passTimer, _currHoldPass, (c, t) => setState(() { autoPassCount += c; autoPassTime += t; _currHoldPass = 0.0; })))),
             ],
