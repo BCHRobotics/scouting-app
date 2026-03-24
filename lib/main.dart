@@ -376,7 +376,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
 
         Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)), child: Column(children: [
           _largeCheckbox("Penalty", autoPenalty, Colors.redAccent, (v)=>setState((){autoPenalty=v; _saveDraft();})),
-          const SizedBox(height: 55),
+          const SizedBox(height: 15),
           _largeCheckbox("Contributed", autoContrib, Colors.greenAccent, (v)=>setState((){autoContrib=v; _saveDraft();})),
           const SizedBox(height: 20),
           _input(autoNoteCtrl, "Auto Notes...", lines: 3)
@@ -456,7 +456,7 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
       ]),
       const SizedBox(height: 40),
       SizedBox(width: double.infinity, height: 70, child: _btn("SAVE & EXIT", Colors.green, saveMatch, isBig: true)),
-      const SizedBox(height: 15),
+      const Spacer(), // Replaced SizedBox with Spacer to force button to the bottom
       
       // START OF RESET BUTTON WIDGET
       SizedBox(width: double.infinity, height: 60, child: _btn("RESET DATA", Colors.redAccent, _resetMatch, isBig: false))
