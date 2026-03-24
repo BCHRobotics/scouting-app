@@ -270,6 +270,28 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
     if(mounted) Navigator.pop(context);
   }
 
+  // START OF RESET BUTTON LOGIC
+  void _resetMatch() async {
+    bool confirm = await _confirmExit(context, "Reset Data?", "Are you sure you want to clear all current form data?", yesLabel: "RESET");
+    if (confirm) {
+      setState(() {
+        matchCtrl.clear(); teamCtrl.clear(); autoNoteCtrl.clear(); teleNoteCtrl.clear();
+        alliance = null; autoStartPos = null; autoClimbPos = "None"; preload = 0;
+        autoScoreCount = 0; autoScoreTime = 0.0; autoPassCount = 0; autoPassTime = 0.0;
+        autoPenalty = false; autoContrib = false; autoL = 0;
+        teleStartPos = null; teleClimbPos = "None"; teleDefCount = 0; teleDefTime = 0.0;
+        teleColCount = 0; teleColTime = 0.0; teleShootCount = 0; teleShootTime = 0.0;
+        telePassCount = 0; telePassTime = 0.0; disabledTipped = false; telePenalty = false; teleL = 0;
+        rateShoot = 0.0; rateFeed = 1.0; rateDef = 1.0; rateContrib = 1.0; ratePen = 1.0;
+        pageIdx = 0; // Returns user to Auto page after reset
+      });
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('match_draft');
+      if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Data Reset successfully!")));
+    }
+  }
+  // END OF RESET BUTTON LOGIC
+
   @override
   Widget build(BuildContext context) {
     Color headColor = [const Color(0xFFD97706), const Color(0xFF2563EB), Colors.purple][pageIdx];
@@ -433,7 +455,13 @@ class _MatchScoutingScreenState extends State<MatchScoutingScreen> {
         Expanded(child: Column(children: [ _input(teamCtrl, "T#", isBig: true), const SizedBox(height: 5), const Text("Team Number", style: TextStyle(color: Colors.grey)) ]))
       ]),
       const SizedBox(height: 40),
-      SizedBox(width: double.infinity, height: 70, child: _btn("SAVE & EXIT", Colors.green, saveMatch, isBig: true))
+      SizedBox(width: double.infinity, height: 70, child: _btn("SAVE & EXIT", Colors.green, saveMatch, isBig: true)),
+      const SizedBox(height: 15),
+      
+      // START OF RESET BUTTON WIDGET
+      SizedBox(width: double.infinity, height: 60, child: _btn("RESET DATA", Colors.redAccent, _resetMatch, isBig: false))
+      // END OF RESET BUTTON WIDGET
+      
     ]));
   }
 
